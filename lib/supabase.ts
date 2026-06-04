@@ -16,4 +16,6 @@ export type Kensho = {
   created_at: string
   approved: boolean
   source_url: string | null
+  winners_count: number | null
+  category: string | null
 }

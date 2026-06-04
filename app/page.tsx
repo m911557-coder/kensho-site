@@ -1,4 +1,5 @@
 import { supabase, Kensho } from '@/lib/supabase'
+import KenshoList from './components/KenshoList'
 
 export const revalidate = 300
 
@@ -9,20 +10,6 @@ async function getKenshoList(): Promise<Kensho[]> {
     .eq('approved', true)
     .order('created_at', { ascending: false })
   return data ?? []
-}
-
-function DeadlineBadge({ deadline }: { deadline: string | null }) {
-  if (!deadline) return null
-  const today = new Date()
-  const end = new Date(deadline)
-  const diff = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-  if (diff < 0) return null
-  const color = diff <= 3 ? 'bg-red-500' : diff <= 7 ? 'bg-orange-400' : 'bg-gray-400'
-  return (
-    <span className={`${color} text-white text-xs font-bold px-2 py-0.5 rounded-full`}>
-      {diff === 0 ? '本日締切！' : `残り${diff}日`}
-    </span>
-  )
 }
 
 export default async function Home() {
@@ -100,72 +87,8 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 懸賞一覧 */}
-      <section className="max-w-5xl mx-auto px-4 py-10">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-black text-gray-800">
-            🎯 現在開催中の懸賞
-          </h2>
-          <span className="text-sm text-gray-400">新着順</span>
-        </div>
-
-        {list.length === 0 ? (
-          <p className="text-center text-gray-400 mt-16 py-16">現在掲載中の懸賞はありません</p>
-        ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {list.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white rounded-2xl shadow-sm border border-orange-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col overflow-hidden"
-              >
-                {/* カード上部カラーバー */}
-                <div className="h-1.5 bg-gradient-to-r from-orange-400 to-yellow-400" />
-
-                <div className="p-5 flex flex-col gap-3 flex-1">
-                  {/* 会社名 + 残り日数 */}
-                  <div className="flex items-center justify-between gap-2">
-                    {item.company && (
-                      <span className="text-xs font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full truncate max-w-[60%]">
-                        {item.company}
-                      </span>
-                    )}
-                    <DeadlineBadge deadline={item.deadline} />
-                  </div>
-
-                  {/* タイトル */}
-                  <h3 className="text-base font-bold text-gray-800 leading-snug">
-                    {item.title}
-                  </h3>
-
-                  {/* 説明 */}
-                  {item.description && (
-                    <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">
-                      {item.description}
-                    </p>
-                  )}
-
-                  {/* 締切日 */}
-                  {item.deadline && (
-                    <p className="text-xs text-gray-400 flex items-center gap-1">
-                      <span>📅</span> 締切：{item.deadline}
-                    </p>
-                  )}
-
-                  {/* 応募ボタン */}
-                  <a
-                    href={item.line_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-auto block text-center bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white font-bold py-2.5 px-4 rounded-xl transition shadow-sm shadow-orange-200"
-                  >
-                    🎯 LINEで応募する
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      {/* 懸賞一覧（フィルター・ソート付き） */}
+      <KenshoList items={list} />
 
       {/* フッター */}
       <footer className="bg-gray-800 text-gray-400 mt-16">
