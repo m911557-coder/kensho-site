@@ -14,4 +14,6 @@ export type Kensho = {
   line_url: string
   image_url: string | null
   created_at: string
+  approved: boolean
+  source_url: string | null
 }
