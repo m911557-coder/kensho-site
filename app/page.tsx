@@ -6,6 +6,7 @@ async function getKenshoList(): Promise<Kensho[]> {
   const { data } = await supabase
     .from('kensho')
     .select('*')
+    .eq('approved', true)
     .order('created_at', { ascending: false })
   return data ?? []
 }
