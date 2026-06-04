@@ -1,6 +1,6 @@
 import { supabase, Kensho } from '@/lib/supabase'
 
-export const revalidate = 3600
+export const revalidate = 300
 
 async function getKenshoList(): Promise<Kensho[]> {
   const { data } = await supabase
