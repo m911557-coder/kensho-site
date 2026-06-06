@@ -52,13 +52,19 @@ export default async function Home() {
             ハワイ旅行・最新家電・ギフトカード…<br />
             LINEで簡単応募できる懸賞を毎日集めています
           </p>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 mb-8">
             {['✈️ 旅行', '📱 家電', '🛒 ギフトカード', '🍺 食品・飲料', '🎫 チケット'].map((tag) => (
               <span key={tag} className="bg-white/20 backdrop-blur text-white text-sm px-3 py-1 rounded-full border border-white/30">
                 {tag}
               </span>
             ))}
           </div>
+          <a
+            href="/subscribe"
+            className="inline-flex items-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-gray-900 font-bold px-6 py-3 rounded-full transition shadow-lg"
+          >
+            📬 新着通知を受け取る（無料）
+          </a>
         </div>
 
         {/* 波形の区切り */}
