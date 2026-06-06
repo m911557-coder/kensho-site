@@ -49,15 +49,15 @@ export async function GET(req: NextRequest) {
 
   if (error) {
     return new NextResponse(`
-      <html><body style="font-family:sans-serif;text-align:center;padding:60px;">
+      <html><head><meta charset="utf-8"></head><body style="font-family:sans-serif;text-align:center;padding:60px;">
         <h2>❌ エラーが発生しました</h2>
         <p>${error.message}</p>
       </body></html>
-    `, { headers: { 'Content-Type': 'text/html' } })
+    `, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
   }
 
   return new NextResponse(`
-    <html><body style="font-family:sans-serif;text-align:center;padding:60px;background:#fff7ed;">
+    <html><head><meta charset="utf-8"></head><body style="font-family:sans-serif;text-align:center;padding:60px;background:#fff7ed;">
       <div style="max-width:500px;margin:0 auto;">
         <div style="font-size:60px;margin-bottom:20px;">🎉</div>
         <h2 style="color:#c2410c;">${data.length}件の懸賞を追加しました！</h2>
@@ -68,5 +68,5 @@ export async function GET(req: NextRequest) {
         </a>
       </div>
     </body></html>
-  `, { headers: { 'Content-Type': 'text/html' } })
+  `, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
 }
