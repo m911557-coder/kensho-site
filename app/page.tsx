@@ -101,7 +101,12 @@ export default async function Home() {
           <p className="text-xs text-gray-500">
             掲載している懸賞情報は各社の公式キャンペーンです。応募・当選に関するお問い合わせは各企業へお願いします。
           </p>
-          <p className="text-xs text-gray-600 mt-6">© 2026 LINE懸賞まとめ</p>
+          <div className="flex gap-4 mt-6">
+            <a href="/privacy" className="text-xs text-gray-500 hover:text-orange-400 transition">
+              プライバシーポリシー
+            </a>
+          </div>
+          <p className="text-xs text-gray-600 mt-3">© 2026 LINE懸賞まとめ</p>
         </div>
       </footer>
     </main>
