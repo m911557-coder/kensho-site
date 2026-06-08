@@ -118,7 +118,7 @@ async function sendApprovalEmail(candidates) {
       <p style="margin: 4px 0; color: #6b7280; font-size: 13px;">📅 締切：${item.deadline || '不明'}</p>
       <p style="margin: 4px 0; color: #6b7280; font-size: 13px;">🏷️ ${item.category || ''}</p>
       <p style="margin: 8px 0; color: #374151; font-size: 14px;">${item.description || ''}</p>
-      ${item.source_url ? `<a href="${item.source_url}" style="color: #3b82f6; font-size: 12px;">📰 元記事を確認</a>` : ''}
+      <a href="${item.line_url}" style="color: #06c755; font-size: 13px;">📱 ${item.line_url}</a>
     </div>
   `).join('')
 
