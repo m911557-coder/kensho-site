@@ -1,0 +1,26 @@
+name: 期限切れキャンペーン自動削除
+
+on:
+  schedule:
+    # 毎週月曜日 JST 9:00（UTC 0:00）に実行
+    - cron: '0 0 * * 1'
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: パッケージインストール
+        run: npm ci
+
+      - name: 期限切れキャンペーン削除
+        run: node scripts/cleanup-expired.mjs
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
