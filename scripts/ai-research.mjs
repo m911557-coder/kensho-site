@@ -24,13 +24,27 @@ async function getExistingTitles() {
 async function researchRealKensho(existingTitles, existingUrls) {
   let allText = ''
 
-  // 取得先リスト（kensho-news.comのLINEカテゴリ＋主要企業の検索）
+  // 取得先リスト（kensho-news.comのLINEカテゴリ＋トーク履歴の全企業）
   const fetchTargets = [
     { url: 'https://kensho-news.com/category/line/', label: 'LINEカテゴリ1ページ目' },
     { url: 'https://kensho-news.com/category/line/page/2/', label: 'LINEカテゴリ2ページ目' },
-    { url: 'https://kensho-news.com/?s=アサヒビール', label: 'アサヒビール検索' },
-    { url: 'https://kensho-news.com/?s=キリン', label: 'キリン検索' },
-    { url: 'https://kensho-news.com/?s=サントリー', label: 'サントリー検索' },
+    // トーク履歴より：定期的にLINEキャンペーンを行う企業
+    { url: 'https://kensho-news.com/?s=アサヒビール', label: 'アサヒビール' },
+    { url: 'https://kensho-news.com/?s=キリン', label: 'キリン' },
+    { url: 'https://kensho-news.com/?s=サントリー', label: 'サントリー' },
+    { url: 'https://kensho-news.com/?s=コカコーラ', label: 'コカコーラ' },
+    { url: 'https://kensho-news.com/?s=ジョージア', label: 'ジョージア' },
+    { url: 'https://kensho-news.com/?s=ポカリスエット', label: 'ポカリスエット' },
+    { url: 'https://kensho-news.com/?s=レッドブル', label: 'レッドブル' },
+    { url: 'https://kensho-news.com/?s=ローソン', label: 'ローソン' },
+    { url: 'https://kensho-news.com/?s=セブンイレブン', label: 'セブンイレブン' },
+    { url: 'https://kensho-news.com/?s=ミニストップ', label: 'ミニストップ' },
+    { url: 'https://kensho-news.com/?s=明治', label: '明治' },
+    { url: 'https://kensho-news.com/?s=大塚製薬', label: '大塚製薬' },
+    { url: 'https://kensho-news.com/?s=スプリングバレー', label: 'スプリングバレー' },
+    { url: 'https://kensho-news.com/?s=翠ジンソーダ', label: '翠ジンソーダ' },
+    { url: 'https://kensho-news.com/?s=午後の紅茶', label: '午後の紅茶' },
+    { url: 'https://kensho-news.com/?s=ボディメンテ', label: 'ボディメンテ' },
   ]
 
   for (const target of fetchTargets) {
