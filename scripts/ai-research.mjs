@@ -152,10 +152,10 @@ async function sendApprovalEmail(candidates) {
 }
 
 async function main() {
-  // 日本時間で22:00〜6:00の間はメール送信しない
+  // 日本時間で19:00〜21:00の間のみメール送信（20:00実行想定）
   const jstHour = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours()
-  if (jstHour >= 22 || jstHour < 6) {
-    console.log(`夜間のため通知スキップ（JST ${jstHour}時）`)
+  if (jstHour < 19 || jstHour >= 21) {
+    console.log(`送信時間外のためスキップ（JST ${jstHour}時）`)
     return
   }
 
