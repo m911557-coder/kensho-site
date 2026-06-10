@@ -22,27 +22,33 @@ async function getExistingTitles() {
 
 // kensho-news.comから実在するLINE懸賞を取得してAIで解析
 async function researchRealKensho(existingTitles, existingUrls) {
-  // kensho-news.comのLINEカテゴリを取得
-  const pages = [1, 2]
   let allText = ''
 
-  for (const page of pages) {
+  // 取得先リスト（kensho-news.comのLINEカテゴリ＋主要企業の検索）
+  const fetchTargets = [
+    { url: 'https://kensho-news.com/category/line/', label: 'LINEカテゴリ1ページ目' },
+    { url: 'https://kensho-news.com/category/line/page/2/', label: 'LINEカテゴリ2ページ目' },
+    { url: 'https://kensho-news.com/?s=アサヒビール', label: 'アサヒビール検索' },
+    { url: 'https://kensho-news.com/?s=キリン', label: 'キリン検索' },
+    { url: 'https://kensho-news.com/?s=サントリー', label: 'サントリー検索' },
+  ]
+
+  for (const target of fetchTargets) {
     try {
-      const url = page === 1
-        ? 'https://kensho-news.com/category/line/'
-        : `https://kensho-news.com/category/line/page/${page}/`
-      const res = await fetch(url, {
+      const res = await fetch(target.url, {
         headers: { 'User-Agent': 'Mozilla/5.0' },
         signal: AbortSignal.timeout(10000)
       })
       const html = await res.text()
-      // タイトルとURLだけ抽出（軽量化）
       const matches = html.matchAll(/href="(https:\/\/kensho-news\.com\/[^"]+\d+\/)"[^>]*>([^<]{10,})</g)
+      let count = 0
       for (const m of matches) {
         allText += `URL: ${m[1]}\nタイトル: ${m[2].trim()}\n`
+        count++
       }
+      console.log(`${target.label}: ${count}件取得`)
     } catch (e) {
-      console.log(`ページ取得エラー: ${e.message}`)
+      console.log(`${target.label} 取得エラー: ${e.message}`)
     }
   }
 
