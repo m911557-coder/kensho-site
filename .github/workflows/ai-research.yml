@@ -2,8 +2,12 @@ name: AI懸賞リサーチ
 
 on:
   schedule:
-    # 日本時間 20:00（UTC 11:00）
+    # 日本時間（UTC = JST - 9時間）
     - cron: '0 11 * * *'  # JST 20:00
+    - cron: '0 14 * * *'  # JST 23:00
+    - cron: '0 17 * * *'  # JST 02:00
+    - cron: '0 20 * * *'  # JST 05:00
+    - cron: '0 23 * * *'  # JST 08:00
   workflow_dispatch:  # 手動実行も可能
 
 jobs:
