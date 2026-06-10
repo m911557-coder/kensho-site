@@ -20,13 +20,14 @@ export async function GET(req: NextRequest) {
     return new NextResponse('トークンが無効です', { status: 400 })
   }
 
-  // DBに一括追加
+  // DBに一括追加（重複タイトルはスキップ）
   const items = candidates.map((item: {
     title: string
     company?: string
     description?: string
     deadline?: string
     line_url: string
+    source_url?: string
     winners_count?: number
     category?: string
   }) => ({
@@ -37,14 +38,14 @@ export async function GET(req: NextRequest) {
     line_url: item.line_url,
     image_url: null,
     approved: true,
-    source_url: item.line_url,
+    source_url: item.source_url || item.line_url,
     winners_count: item.winners_count || null,
     category: item.category || null,
   }))
 
   const { data, error } = await supabase
     .from('kensho')
-    .insert(items)
+    .upsert(items, { onConflict: 'title', ignoreDuplicates: true })
     .select()
 
   if (error) {
@@ -56,11 +57,15 @@ export async function GET(req: NextRequest) {
     `, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
   }
 
+  const added = data?.length ?? 0
+  const skipped = items.length - added
+
   return new NextResponse(`
     <html><head><meta charset="utf-8"></head><body style="font-family:sans-serif;text-align:center;padding:60px;background:#fff7ed;">
       <div style="max-width:500px;margin:0 auto;">
-        <div style="font-size:60px;margin-bottom:20px;">🎉</div>
-        <h2 style="color:#c2410c;">${data.length}件の懸賞を追加しました！</h2>
+        <div style="font-size:60px;margin-bottom:20px;">${added > 0 ? '🎉' : '✅'}</div>
+        <h2 style="color:#c2410c;">${added}件の懸賞を追加しました！</h2>
+        ${skipped > 0 ? `<p style="color:#9ca3af;font-size:13px;">（${skipped}件はすでに登録済みのためスキップ）</p>` : ''}
         <p style="color:#6b7280;">サイトに反映されました。</p>
         <a href="https://kensho-site.vercel.app"
            style="display:inline-block;margin-top:20px;background:linear-gradient(135deg,#f97316,#fb923c);color:white;padding:12px 30px;border-radius:50px;text-decoration:none;font-weight:bold;">
