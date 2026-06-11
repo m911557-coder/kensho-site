@@ -1,13 +1,15 @@
-name: 懸賞リサーチ リマインダー
+name: 懸賞 自動収集
 
 on:
   schedule:
     # 日本時間（UTC = JST - 9時間）
-    - cron: '0 23 * * *'  # JST 08:00（毎朝チェックリストを送信）
+    - cron: '0 23 * * *'  # JST 08:00
+    - cron: '0 5 * * *'   # JST 14:00
+    - cron: '0 11 * * *'  # JST 20:00
   workflow_dispatch:  # 手動実行も可能
 
 jobs:
-  reminder:
+  collect:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,9 +21,12 @@ jobs:
       - name: パッケージインストール
         run: npm ci
 
-      - name: リサーチリマインダー送信
-        run: node scripts/research-reminder.mjs
+      - name: 懸賞 自動収集・追加
+        run: node scripts/auto-collect.mjs
         env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           SITE_URL: https://kensho-site.vercel.app
