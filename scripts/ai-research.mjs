@@ -86,28 +86,34 @@ ${allText}
 すでに登録済みのタイトル（これらは絶対に除外）：
 ${existingList}
 
-【重要】上記の「新着リスト」に実際に存在するURLとタイトルのみを使ってください。
-架空・推測のキャンペーンは絶対に作らないでください。
-新着リストに新しいものがなければ必ず [] を返してください。
+【最重要】上記の「新着リスト」には記事タイトルとkensho-news.comの記事URLしか含まれていません。
+実際のLINE応募URL（lin.ee/〜）は一覧に載っていないため、あなたには分かりません。
+本物のlin.ee URLが分からないキャンペーンは絶対に含めないでください。
+架空・推測のURLやキャンペーンは絶対に作らないでください。
+"https://lin.ee/xxxxxxx" のような記入例をそのまま使うことは厳禁です。
 
-新着リストから、登録済みでないものを最大5件選び、以下のJSON形式で返してください：
+ほとんどの場合、本物のlin.ee URLは不明なはずなので、その場合は必ず [] を返してください。
+
+万が一、記事タイトルや説明文の中に実在するlin.ee URLが明記されている場合のみ、
+そのキャンペーンを以下のJSON形式で返してください（最大5件）：
 [
   {
     "title": "新着リストにあるタイトルそのまま",
-    "company": "企業名（記事から推測）",
+    "company": "企業名",
     "description": "懸賞の説明（80文字程度）",
-    "deadline": "2026-MM-DD",
+    "deadline": "2026-MM-DD（記事に明記された実際の締切のみ。不明なら含めない）",
     "source_url": "新着リストにあるkensho-news.comのURL",
-    "line_url": "https://lin.ee/xxxxxxx",
+    "line_url": "記事内に明記された実在のlin.ee URLのみ",
     "winners_count": 数字,
     "category": "食品・飲料 または ギフトカード または 家電・生活家電 または 日用品・コスメ または チケット・旅行 または その他"
   }
 ]
 
 絶対条件：
-- 新着リストに存在するURLのみ使うこと
+- 本物のlin.ee URLが明記されていないものは絶対に含めない
+- 締切が不明なものは含めない（仮の日付を作らない）
 - 登録済みタイトルと重複しないこと
-- 新しいものがなければ [] を返すこと`
+- 確実なものがなければ [] を返すこと（これが最も多いケースです）`
     }]
   })
 
@@ -116,11 +122,28 @@ ${existingList}
     const jsonMatch = text.match(/\[[\s\S]*\]/)
     if (jsonMatch) {
       const candidates = JSON.parse(jsonMatch[0])
-      // 重複チェック
-      return candidates.filter(c =>
-        !existingTitles.has(c.title) &&
-        !existingUrls.has(c.source_url)
-      )
+      // 重複チェック＋偽データ除外
+      return candidates.filter(c => {
+        // 重複チェック
+        if (existingTitles.has(c.title) || existingUrls.has(c.source_url)) return false
+
+        // 偽のline_urlを除外（プレースホルダーや不正なURL）
+        const lineUrl = c.line_url || ''
+        const isPlaceholder = /x{4,}/i.test(lineUrl) // xxxxxxx等
+        const isValidLine = /^https:\/\/(lin\.ee\/|line\.me\/|liff\.line\.me\/|page\.line\.me\/)/.test(lineUrl)
+        if (isPlaceholder || !isValidLine) {
+          console.log(`除外（無効なline_url）: ${c.title} → ${lineUrl}`)
+          return false
+        }
+
+        // 仮の締切（2026-12-31）を除外
+        if (c.deadline === '2026-12-31') {
+          console.log(`除外（仮の締切）: ${c.title}`)
+          return false
+        }
+
+        return true
+      })
     }
   } catch (e) {
     console.error('JSON parse error:', e)

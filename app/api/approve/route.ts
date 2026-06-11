@@ -20,8 +20,13 @@ export async function GET(req: NextRequest) {
     return new NextResponse('トークンが無効です', { status: 400 })
   }
 
-  // DBに一括追加（重複タイトルはスキップ）
-  const items = candidates.map((item: {
+  // 偽データ除外（プレースホルダーURLや不正なline_urlをブロック）
+  const isValidLineUrl = (url: string) =>
+    !!url &&
+    !/x{4,}/i.test(url) &&
+    /^https:\/\/(lin\.ee\/|line\.me\/|liff\.line\.me\/|page\.line\.me\/)/.test(url)
+
+  type Candidate = {
     title: string
     company?: string
     description?: string
@@ -30,7 +35,23 @@ export async function GET(req: NextRequest) {
     source_url?: string
     winners_count?: number
     category?: string
-  }) => ({
+  }
+
+  const validCandidates = (candidates as Candidate[]).filter(
+    (c) => isValidLineUrl(c.line_url) && c.deadline !== '2026-12-31'
+  )
+
+  if (validCandidates.length === 0) {
+    return new NextResponse(`
+      <html><head><meta charset="utf-8"></head><body style="font-family:sans-serif;text-align:center;padding:60px;">
+        <h2>⚠️ 追加できる有効な懸賞がありませんでした</h2>
+        <p style="color:#6b7280;">URLが不正、または架空のデータのため追加されませんでした。</p>
+      </body></html>
+    `, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+  }
+
+  // DBに一括追加（重複タイトルはスキップ）
+  const items = validCandidates.map((item) => ({
     title: item.title,
     company: item.company || null,
     description: item.description || null,
