@@ -28,22 +28,26 @@ const SITE_URL = process.env.SITE_URL || 'https://kensho-site.vercel.app'
 // ────────────────────────────────────────────────────────────────
 
 async function getExistingData() {
-  const { data } = await supabase.from('kensho').select('title, source_url')
+  const { data } = await supabase.from('kensho').select('title, source_url, line_url')
   return {
     titles: new Set((data || []).map(d => d.title).filter(Boolean)),
     sourceUrls: new Set((data || []).map(d => d.source_url).filter(Boolean)),
+    lineUrls: new Set((data || []).map(d => d.line_url).filter(Boolean)),
   }
 }
 
-// リダイレクトを追跡して lin.ee / line.me URL を取得
+const LINE_URL_PATTERN = /^https:\/\/(lin\.ee\/|line\.me\/|liff\.line\.me\/|page\.line\.me\/)/
+
+// リダイレクトを追跡して lin.ee / line.me URL を取得（2段階対応）
+// chance.com → lin.ee (直接) or chance.com → 企業サイト → lin.ee
 async function resolveLineUrl(url, depth = 0) {
-  if (depth > 6) return null
+  if (depth > 4) return null
   try {
     const res = await fetch(url, {
       redirect: 'manual',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'ja,en;q=0.9',
       },
       signal: AbortSignal.timeout(8000)
@@ -52,17 +56,49 @@ async function resolveLineUrl(url, depth = 0) {
     if (!location) return null
 
     // lin.ee / line.me に到達したら完了
-    if (/^https:\/\/(lin\.ee\/|line\.me\/|liff\.line\.me\/|page\.line\.me\/)/.test(location)) {
-      return location
-    }
-    // まだ別のリダイレクトが続く場合は追跡
-    if (location.startsWith('http')) {
-      return resolveLineUrl(location, depth + 1)
+    if (LINE_URL_PATTERN.test(location)) return location
+
+    // 企業サイトへのリダイレクト → そのページからlin.eeを探す（1段階）
+    // ただしTwitter/X・YouTube等のSNSページはスキップ（誤マッチ防止）
+    const isSnsSite = /\/(twitter\.com|x\.com|instagram\.com|youtube\.com|tiktok\.com)\//.test(location)
+    if (location.startsWith('http') && depth === 0 && !isSnsSite) {
+      const lineUrl = await fetchLineUrlFromPage(location)
+      if (lineUrl) return lineUrl
     }
   } catch {
     // ignore
   }
   return null
+}
+
+// URLのHTMLエンティティをデコードし、LIFFのクエリパラメータを除去
+function cleanLineUrl(url) {
+  if (!url) return url
+  const decoded = url.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+  // liff.line.me はベースURLのみ使用（?以降のクエリは不要）
+  if (decoded.includes('liff.line.me/')) {
+    return decoded.split('?')[0]
+  }
+  return decoded
+}
+
+// 企業ページからlin.ee / line.me URLを直接探す
+async function fetchLineUrlFromPage(pageUrl) {
+  try {
+    const res = await fetch(pageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+      },
+      signal: AbortSignal.timeout(8000)
+    })
+    if (!res.ok) return null
+    const html = await res.text()
+    const m = html.match(/https:\/\/(lin\.ee\/[A-Za-z0-9]+|line\.me\/ti\/p\/@[A-Za-z0-9_-]+|liff\.line\.me\/[^\s"'<]+|page\.line\.me\/[A-Za-z0-9_-]+)/)
+    return m ? cleanLineUrl(m[0]) : null
+  } catch {
+    return null
+  }
 }
 
 // kensho-news.com の記事ページから lin.ee URL・キャンペーン情報を抽出
@@ -80,43 +116,66 @@ async function extractFromArticle(articleUrl) {
     const html = await res.text()
 
     // ── lin.ee URL の取得 ──
-    // パターン1: chance.com/jump.srv リダイレクト経由
+    // パターン1: chance.com/jump.srv リダイレクト経由（www.chance.com も対応）
     let lineUrl = null
-    const chanceMatch = html.match(/href="(https:\/\/chance\.com\/jump\.srv[^"]+)"/i)
+    const chanceMatch = html.match(/href="(https:\/\/(?:www\.)?chance\.com\/jump\.srv[^"]+)"/i)
     if (chanceMatch) {
       lineUrl = await resolveLineUrl(chanceMatch[1])
     }
 
-    // パターン2: 直接 lin.ee リンク
+    // パターン2: 直接 lin.ee / liff.line.me リンク（記事内）
     if (!lineUrl) {
-      const m = html.match(/href="(https:\/\/(lin\.ee\/[A-Za-z0-9]+|line\.me\/ti\/p\/@[A-Za-z0-9_-]+|liff\.line\.me\/[^"]+|page\.line\.me\/[^"]+))"/i)
-      if (m) lineUrl = m[1]
+      const m = html.match(/href="(https:\/\/(lin\.ee\/[A-Za-z0-9]+|line\.me\/ti\/p\/@[A-Za-z0-9_-]+|liff\.line\.me\/[^"]+|page\.line\.me\/[A-Za-z0-9_-]+))"/i)
+      if (m) lineUrl = cleanLineUrl(m[1])
     }
 
     // パターン3: テキスト中に直接記載
     if (!lineUrl) {
-      const m = html.match(/https:\/\/(lin\.ee\/[A-Za-z0-9]+|line\.me\/ti\/p\/@[A-Za-z0-9_-]+)/)
-      if (m) lineUrl = m[0]
+      const m = html.match(/https:\/\/(lin\.ee\/[A-Za-z0-9]+|line\.me\/ti\/p\/@[A-Za-z0-9_-]+|page\.line\.me\/[A-Za-z0-9_-]+)/)
+      if (m) lineUrl = cleanLineUrl(m[0])
+    }
+
+    // パターン4: 企業サイトへの直接リンクが記事にある場合、そのページからlin.ee探す
+    // （Twitter/SNS・kensho-news自身・wp-content等は除外）
+    if (!lineUrl) {
+      const extLinks = [...html.matchAll(/href="(https?:\/\/(?!(?:www\.)?kensho-news\.com|twitter\.com|x\.com|instagram\.com|youtube\.com|wp-content)[^"]+)"/gi)]
+        .map(m => m[1])
+        .filter(u => !u.includes('chance.com') && !u.includes('#') && !u.includes('?'))
+        .slice(0, 3) // 最大3件
+      for (const extUrl of extLinks) {
+        const found = await fetchLineUrlFromPage(extUrl)
+        if (found) { lineUrl = found; break }
+      }
     }
 
     if (!lineUrl) return null
 
     // ── タイトルの取得・クリーニング ──
-    // <title> タグから取得し、サイト名部分を除去
+    // kensho-news.com の <title> は "キャンペーン名が当たるキャンペーン一覧" 形式
+    // → "が当たるキャンペーン一覧" 以降を除去してキャンペーン名だけ抽出
     let title = ''
     const titleTag = html.match(/<title[^>]*>([^<]+)<\/title>/i)
     if (titleTag) {
       title = titleTag[1]
+        // kensho-news.com 特有のテンプレート除去
+        .replace(/が当たるキャンペーン一覧.*$/i, '')
+        .replace(/を当てるなら.*$/i, '')
+        .replace(/のキャンペーン一覧.*$/i, '')
+        // 一般的なサイト名除去
         .replace(/[｜|]\s*[Kk]ensho[^|]*$/i, '')
         .replace(/\s*[\|｜]\s*懸賞.*$/i, '')
-        .replace(/\s*[\|｜]\s*プレゼント.*$/i, '')
+        .replace(/【懸賞.*$/i, '')
         .trim()
     }
-    // <h1> が取れる場合はそちらを優先
-    const h1Match = html.match(/<h1[^>]*>([^<]{10,100})<\/h1>/i)
+    // <h1> が取れる場合（ただし「〜が当たるキャンペーン一覧」など除去）
+    const h1Match = html.match(/<h1[^>]*>([^<]{10,120})<\/h1>/i)
     if (h1Match) {
-      const h1 = h1Match[1].replace(/<[^>]+>/g, '').trim()
-      if (h1.length >= 10 && h1.length <= 100) title = h1
+      const h1 = h1Match[1]
+        .replace(/<[^>]+>/g, '')
+        .replace(/が当たるキャンペーン一覧.*$/i, '')
+        .replace(/を当てるなら.*$/i, '')
+        .trim()
+      if (h1.length >= 5 && h1.length <= 100) title = h1
     }
 
     if (!title || title.length < 5) return null
@@ -187,6 +246,8 @@ async function getNewArticleUrls(existingSourceUrls) {
   const pages = [
     'https://kensho-news.com/category/line/',
     'https://kensho-news.com/category/line/page/2/',
+    'https://kensho-news.com/category/line/page/3/',
+    'https://kensho-news.com/category/line/page/4/',
   ]
   for (const pageUrl of pages) {
     try {
@@ -197,8 +258,8 @@ async function getNewArticleUrls(existingSourceUrls) {
       if (!res.ok) { console.log(`${pageUrl}: HTTP ${res.status}`); continue }
       const html = await res.text()
 
-      // 記事URLのパターン（日付入りパーマリンク）
-      const matches = html.matchAll(/href="(https:\/\/kensho-news\.com\/(?:\d{4}\/\d{2}\/\d{2}\/|[^"]+post[^"]+\/)[^"#?]+\/)"/g)
+      // 記事URLのパターン（numberofwinners/cnt-XX/ID/ または genre/type/ID/ 形式）
+      const matches = html.matchAll(/href="(https:\/\/kensho-news\.com\/(?:numberofwinners|genre|prize|product)\/[^"#?]+\/\d{4,}\/?)"/g)
       let count = 0
       for (const m of matches) {
         const url = m[1]
@@ -220,7 +281,7 @@ async function getNewArticleUrls(existingSourceUrls) {
     }
   }
   // 一度に処理する上限（APIコスト・時間節約）
-  return [...urls].slice(0, 15)
+  return [...urls].slice(0, 25)
 }
 
 // AIでオリジナルの説明文を生成（kensho-news.com の文章は使用しない）
@@ -298,7 +359,7 @@ async function main() {
   const jstHour = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours()
   console.log(`===== 自動収集開始 JST ${jstHour}時 =====`)
 
-  const { titles, sourceUrls } = await getExistingData()
+  const { titles, sourceUrls, lineUrls } = await getExistingData()
   console.log(`既存件数: ${titles.size}`)
 
   const articleUrls = await getNewArticleUrls(sourceUrls)
@@ -320,9 +381,13 @@ async function main() {
       continue
     }
 
-    // タイトル重複チェック
+    // タイトル・LINE URL 重複チェック
     if (titles.has(info.title)) {
-      console.log(`スキップ（重複）: ${info.title}`)
+      console.log(`スキップ（タイトル重複）: ${info.title}`)
+      continue
+    }
+    if (lineUrls.has(info.lineUrl)) {
+      console.log(`スキップ（LINE URL重複）: ${info.lineUrl}`)
       continue
     }
 
