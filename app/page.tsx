@@ -107,7 +107,13 @@ export default async function Home() {
           <p className="text-xs text-gray-500">
             掲載している懸賞情報は各社の公式キャンペーンです。応募・当選に関するお問い合わせは各企業へお願いします。
           </p>
-          <div className="flex gap-4 mt-6">
+          <div className="flex gap-4 mt-6 flex-wrap">
+            <a href="/about" className="text-xs text-gray-500 hover:text-orange-400 transition">
+              運営者情報
+            </a>
+            <a href="/blog" className="text-xs text-gray-500 hover:text-orange-400 transition">
+              ブログ
+            </a>
             <a href="/privacy" className="text-xs text-gray-500 hover:text-orange-400 transition">
               プライバシーポリシー
             </a>
