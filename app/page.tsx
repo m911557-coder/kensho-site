@@ -111,6 +111,9 @@ export default async function Home() {
             <a href="/privacy" className="text-xs text-gray-500 hover:text-orange-400 transition">
               プライバシーポリシー
             </a>
+            <a href="/contact" className="text-xs text-gray-500 hover:text-orange-400 transition">
+              お問い合わせ
+            </a>
           </div>
           <p className="text-xs text-gray-600 mt-3">© 2026 LINE懸賞まとめ</p>
         </div>
