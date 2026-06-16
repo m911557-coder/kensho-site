@@ -5,6 +5,14 @@ export const metadata = {
 
 const posts = [
   {
+    slug: 'won-asahi-beer',
+    title: '【当選報告】アサヒ生ビール マルエフ＆ゴールドが当たりました！',
+    description: 'LINE懸賞でアサヒビール2種類に当選！実際の体験談と応募のコツをご紹介します。',
+    date: '2026年6月',
+    emoji: '🍺',
+    category: '当選報告',
+  },
+  {
     slug: 'what-is-line-kensho',
     title: 'LINE懸賞とは？初心者向けかんたん解説',
     description: 'LINEで応募できる懸賞の仕組み・メリット・応募方法をわかりやすく解説します。',
