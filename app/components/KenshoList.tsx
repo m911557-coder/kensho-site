@@ -35,9 +35,21 @@ export default function KenshoList({ items }: { items: Kensho[] }) {
   const [sort, setSort] = useState('newest')
   const [category, setCategory] = useState('すべて')
   const [winnerRange, setWinnerRange] = useState(0)
+  const [search, setSearch] = useState('')
 
   const filtered = useMemo(() => {
     let result = [...items]
+
+    // キーワード検索
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      result = result.filter(
+        (item) =>
+          item.title.toLowerCase().includes(q) ||
+          (item.company ?? '').toLowerCase().includes(q) ||
+          (item.description ?? '').toLowerCase().includes(q)
+      )
+    }
 
     // カテゴリーフィルター
     if (category !== 'すべて') {
@@ -72,10 +84,32 @@ export default function KenshoList({ items }: { items: Kensho[] }) {
     })
 
     return result
-  }, [items, sort, category, winnerRange])
+  }, [items, sort, category, winnerRange, search])
 
   return (
     <section className="max-w-5xl mx-auto px-4 py-10">
+      {/* 検索ボックス */}
+      <div className="mb-4">
+        <div className="relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none">🔍</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="キーワードで検索（例：ビール、旅行、アサヒ…）"
+            className="w-full pl-11 pr-10 py-3.5 rounded-2xl border border-orange-200 bg-white shadow-sm text-sm focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xl leading-none"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* フィルター・ソートUI */}
       <div className="bg-white rounded-2xl shadow-sm border border-orange-100 p-5 mb-8">
         <div className="grid gap-5 sm:grid-cols-3">
