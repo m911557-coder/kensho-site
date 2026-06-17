@@ -39,7 +39,7 @@ async function getExistingData() {
 const LINE_URL_PATTERN = /^https:\/\/(lin\.ee\/|line\.me\/|liff\.line\.me\/|page\.line\.me\/)/
 
 // リダイレクトを追跡して lin.ee / line.me URL を取得（2段階対応）
-// chance.com → lin.ee (直接) or chance.com → 企業サイト → lin.ee
+// chance.com → lin.ee (直接) or chance.com → 企業サイト → lin.ee or 企業サイト自体
 async function resolveLineUrl(url, depth = 0) {
   if (depth > 4) return null
   try {
@@ -55,14 +55,17 @@ async function resolveLineUrl(url, depth = 0) {
     const location = res.headers.get('location')
     if (!location) return null
 
+    // 期限切れ: chance.com がサイトトップ（/）に戻した → スキップ
+    if (location === '/' || location === 'https://www.chance.com/') return null
+
     // lin.ee / line.me に到達したら完了
     if (LINE_URL_PATTERN.test(location)) return location
 
-    // 企業サイトへのリダイレクト → そのページからlin.eeを探す（1段階）
-    // ただしTwitter/X・YouTube等のSNSページはスキップ（誤マッチ防止）
+    // 企業サイトへのリダイレクト → そのページからlin.eeを探す（Twitter等はスキップ）
     const isSnsSite = /\/(twitter\.com|x\.com|instagram\.com|youtube\.com|tiktok\.com)\//.test(location)
     if (location.startsWith('http') && depth === 0 && !isSnsSite) {
-      const lineUrl = await fetchLineUrlFromPage(location)
+      // lin.ee が見つからなくてもLINE OAuth型キャンペーンなら企業URLを返す
+      const lineUrl = await fetchLineUrlFromPage(location, true)
       if (lineUrl) return lineUrl
     }
   } catch {
@@ -82,20 +85,40 @@ function cleanLineUrl(url) {
   return decoded
 }
 
-// 企業ページからlin.ee / line.me URLを直接探す
-async function fetchLineUrlFromPage(pageUrl) {
+// 企業ページからlin.ee / line.me URLを探す
+// acceptCompanyUrl=true の場合、lin.eeがなくてもLINEキャンペーンページなら企業URLを返す
+async function fetchLineUrlFromPage(pageUrl, acceptCompanyUrl = false) {
   try {
     const res = await fetch(pageUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'ja,en;q=0.9',
       },
-      signal: AbortSignal.timeout(8000)
+      signal: AbortSignal.timeout(10000)
     })
     if (!res.ok) return null
     const html = await res.text()
+
+    // lin.ee / liff.line.me / page.line.me を直接探す
     const m = html.match(/https:\/\/(lin\.ee\/[A-Za-z0-9]+|line\.me\/ti\/p\/@[A-Za-z0-9_-]+|liff\.line\.me\/[^\s"'<]+|page\.line\.me\/[A-Za-z0-9_-]+)/)
-    return m ? cleanLineUrl(m[0]) : null
+    if (m) return cleanLineUrl(m[0])
+
+    // access.line.me（LINE OAuth）リンクを探す
+    const oauthMatch = html.match(/href="(https:\/\/access\.line\.me\/oauth2\/[^"]+)"/)
+    if (oauthMatch) return oauthMatch[1]
+
+    // LINE OAuth型キャンペーン：lin.eeはないが「友だち追加」「LINEで応募」が明記されている
+    // → 企業URLをそのまま line_url として使用（ユーザーが企業ページからLINE応募できる）
+    if (acceptCompanyUrl) {
+      const isLineCampaign = /LINE公式アカウント|友だち追加|LINEで応募|LINE\s*で\s*応募|line_login|linelogin/i.test(html)
+      if (isLineCampaign) {
+        console.log(`  LINE OAuth型キャンペーン検出: ${pageUrl}`)
+        return pageUrl
+      }
+    }
+
+    return null
   } catch {
     return null
   }
@@ -137,13 +160,14 @@ async function extractFromArticle(articleUrl) {
 
     // パターン4: 企業サイトへの直接リンクが記事にある場合、そのページからlin.ee探す
     // （Twitter/SNS・kensho-news自身・wp-content等は除外）
+    // acceptCompanyUrl=true → lin.eeがなくてもLINEキャンペーンページなら企業URLを使用
     if (!lineUrl) {
       const extLinks = [...html.matchAll(/href="(https?:\/\/(?!(?:www\.)?kensho-news\.com|twitter\.com|x\.com|instagram\.com|youtube\.com|wp-content)[^"]+)"/gi)]
         .map(m => m[1])
         .filter(u => !u.includes('chance.com') && !u.includes('#') && !u.includes('?'))
         .slice(0, 3) // 最大3件
       for (const extUrl of extLinks) {
-        const found = await fetchLineUrlFromPage(extUrl)
+        const found = await fetchLineUrlFromPage(extUrl, true)
         if (found) { lineUrl = found; break }
       }
     }
@@ -281,7 +305,7 @@ async function getNewArticleUrls(existingSourceUrls) {
     }
   }
   // 一度に処理する上限（APIコスト・時間節約）
-  return [...urls].slice(0, 25)
+  return [...urls].slice(0, 40)
 }
 
 // AIでオリジナルの説明文を生成（kensho-news.com の文章は使用しない）
