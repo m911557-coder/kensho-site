@@ -17,6 +17,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: パッケージインストール
+        run: npm ci
+
       - name: 苦潮 発生可能性チェック
         run: node scripts/kushio-alert.mjs
         env:
