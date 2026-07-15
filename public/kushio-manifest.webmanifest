@@ -1,0 +1,14 @@
+{
+  "name": "苦潮チェック",
+  "short_name": "苦潮チェック",
+  "description": "白塚漁港〜宮川河口の苦潮発生可能性チェック",
+  "start_url": "/kushio",
+  "scope": "/kushio",
+  "display": "standalone",
+  "background_color": "#0284c7",
+  "theme_color": "#0284c7",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

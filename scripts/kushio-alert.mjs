@@ -1,7 +1,54 @@
 import { Resend } from 'resend'
+import { createClient } from '@supabase/supabase-js'
+import webpush from 'web-push'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+)
+
+if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || 'mailto:example@example.com',
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  )
+}
+
+async function sendPushNotifications(subject, bodyText) {
+  const { data: subs, error } = await supabase
+    .from('kushio_push_subscriptions')
+    .select('endpoint, p256dh, auth')
+
+  if (error) {
+    console.error(`push購読取得エラー: ${error.message}`)
+    return
+  }
+  if (!subs || subs.length === 0) {
+    console.log('push購読者なし。')
+    return
+  }
+
+  const payload = JSON.stringify({ title: subject, body: bodyText, url: '/kushio' })
+
+  await Promise.all(subs.map(async (s) => {
+    const subscription = { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }
+    try {
+      await webpush.sendNotification(subscription, payload)
+    } catch (e) {
+      if (e.statusCode === 404 || e.statusCode === 410) {
+        // 期限切れ・解除済みの購読は削除
+        await supabase.from('kushio_push_subscriptions').delete().eq('endpoint', s.endpoint)
+      } else {
+        console.error(`push送信エラー(${s.endpoint.slice(-12)}): ${e.message}`)
+      }
+    }
+  }))
+  console.log(`push通知送信: ${subs.length}件`)
+}
 
 // ────────────────────────────────────────────────────────────────
 // 苦潮（貧酸素水塊の湧昇）発生可能性チェック
@@ -219,9 +266,13 @@ async function main() {
   if (error) {
     console.error(`メール送信エラー: ${JSON.stringify(error)}`)
     process.exitCode = 1
-    return
+  } else {
+    console.log(`結果メール送信: ${ADMIN_EMAIL}`)
   }
-  console.log(`結果メール送信: ${ADMIN_EMAIL}`)
+
+  const top = results[0]
+  const pushBody = `${top.name}: ${top.level}（${top.score}点）`
+  await sendPushNotifications(subject, pushBody)
 }
 
 main().catch(console.error)
