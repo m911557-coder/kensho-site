@@ -54,6 +54,28 @@ export default async function KushioPage() {
         <p className="text-gray-400 text-[11px] text-center mt-4 leading-relaxed">
           ※ 過去の実績（2023〜2025年）と気象傾向から算出した簡易推定です。潮回りとの相関は確認できなかったため考慮していません。実際の可否は現地の水色・臭いなどで最終判断してください。
         </p>
+
+        <div className="border-t border-sky-100 mt-4 pt-4">
+          <p className="text-gray-400 text-[11px] text-center mb-2">参考情報</p>
+          <ul className="text-center text-[12px] space-y-1">
+            <li>
+              <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" className="text-sky-600 underline">
+                Open-Meteo
+              </a>
+              <span className="text-gray-400">（このアプリの気象データ提供元）</span>
+            </li>
+            <li>
+              <a href="https://tide.chowari.jp/24/242012/" target="_blank" rel="noopener noreferrer" className="text-sky-600 underline">
+                潮見表（津市）
+              </a>
+            </li>
+            <li>
+              <a href="https://www.jma.go.jp/bosai/amedas/#area_type=offices&area_code=240000&format=table1h&elems=53000" target="_blank" rel="noopener noreferrer" className="text-sky-600 underline">
+                気象庁 アメダス（津）実測値
+              </a>
+            </li>
+          </ul>
+        </div>
       </div>
     </main>
   )
