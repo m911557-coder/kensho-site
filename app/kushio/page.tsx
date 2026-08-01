@@ -22,7 +22,7 @@ function LocationCard({ r }: { r: LocationResult }) {
         直近の強風: {r.maxWind.toFixed(1)}m/s {r.windNote}（{r.maxWindDate} / {r.maxWindDir}、{r.daysAgo}日前）
       </p>
       <p className="text-gray-600 text-[13px] mt-1">
-        本日の風: {r.todayWind.toFixed(1)}m/s ／ 過去3日間の降水量: {r.rain3.toFixed(0)}mm
+        本日の風: {r.todayWind.toFixed(1)}m/s（夜間平均: {r.eveningWind != null ? `${r.eveningWind.toFixed(1)}m/s` : '不明'}） ／ 過去3日間の降水量: {r.rain3.toFixed(0)}mm
       </p>
       <p className="text-gray-400 text-xs mt-1">
         明日の予報: {r.nextWind.toFixed(1)}m/s {r.nextDir}

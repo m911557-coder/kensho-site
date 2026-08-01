@@ -72,6 +72,14 @@ async function sendPushNotifications(subject, bodyText) {
 // とし、トリガー無しの日は自動的に「低」になるようにしている。
 // また強風は直近日ほど重み付けを強くし、1回の強風イベントで
 // 「様子見すべき日」が5日間もダラダラ続かないようにしている。
+//
+// 【凪ボーナスの判定方法について】
+// 日最大風速は日中の風に引っ張られやすく、実際に出かける夜間
+// （21時台〜）が穏やかでも見逃すことがあった（2026-07-30/31の実績、
+// 週間を通して6.5m/s台を超えなかったが夜は1.9〜3.5m/sまで凪いでいて
+// 実際に苦潮・大漁だった）。そのため凪ボーナスは日最大風速の比率では
+// なく、当日夜（20時〜翌1時）の時間別風速の平均が穏やかかどうかを
+// 直接見て判定する。
 // ────────────────────────────────────────────────────────────────
 
 const PAST_DAYS = 5
@@ -91,26 +99,45 @@ function toCompass(deg) {
   return COMPASS[Math.round(deg / 22.5) % 16]
 }
 
-async function fetchDaily(lat, lon, retried = false) {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,precipitation_sum,temperature_2m_max&timezone=Asia%2FTokyo&past_days=${PAST_DAYS}&forecast_days=${FORECAST_DAYS}&wind_speed_unit=ms`
+async function fetchWeather(lat, lon, retried = false) {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,precipitation_sum,temperature_2m_max&hourly=wind_speed_10m&timezone=Asia%2FTokyo&past_days=${PAST_DAYS}&forecast_days=${FORECAST_DAYS}&wind_speed_unit=ms`
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
     if (!res.ok) throw new Error(`Open-Meteo error ${res.status}`)
     const json = await res.json()
-    return json.daily
+    return { daily: json.daily, hourly: json.hourly }
   } catch (e) {
     if (!retried) {
       console.log(`  リトライ中... (${e.message})`)
-      return fetchDaily(lat, lon, true)
+      return fetchWeather(lat, lon, true)
     }
     throw e
   }
 }
 
+// その日の夜（20時〜翌1時）の平均風速
+function eveningAvgWind(hourly, todayStr) {
+  const next = new Date(todayStr + 'T00:00:00Z')
+  next.setUTCDate(next.getUTCDate() + 1)
+  const nextStr = next.toISOString().split('T')[0]
+  const hoursWanted = [
+    `${todayStr}T20:00`, `${todayStr}T21:00`, `${todayStr}T22:00`, `${todayStr}T23:00`,
+    `${nextStr}T00:00`, `${nextStr}T01:00`,
+  ]
+  const values = hoursWanted
+    .map((h) => {
+      const idx = hourly.time.indexOf(h)
+      return idx >= 0 ? hourly.wind_speed_10m[idx] : null
+    })
+    .filter((v) => v != null)
+  if (values.length === 0) return null
+  return values.reduce((a, b) => a + b, 0) / values.length
+}
+
 function windBase(w) {
   if (w >= 8) return 35
   if (w >= 6.5) return 25
-  if (w >= 5) return 10
+  if (w >= 5.3) return 10
   return 0
 }
 
@@ -120,7 +147,7 @@ function recencyWeight(daysAgo) {
   return 0.7 // 4-5日前
 }
 
-function evaluate(daily) {
+function evaluate(daily, hourly) {
   const pastWind = daily.wind_speed_10m_max.slice(0, TODAY_IDX)
   const pastDates = daily.time.slice(0, TODAY_IDX)
   const pastDirs = daily.wind_direction_10m_dominant.slice(0, TODAY_IDX)
@@ -143,8 +170,11 @@ function evaluate(daily) {
   const todayStr = daily.time[TODAY_IDX]
   const month = parseInt(todayStr.split('-')[1], 10)
 
+  // 日中の風に引っ張られる日最大風速ではなく、実際に出かける夜間帯
+  // （20時〜翌1時）が穏やかかどうかを直接見て凪ボーナスを判定する
+  const eveningWind = eveningAvgWind(hourly, todayStr)
   let calmBonus = 0
-  if (maxWind >= 6.5 && daysAgo >= 1 && daysAgo <= 5 && todayWind <= maxWind * 0.65) {
+  if (windScore > 0 && eveningWind != null && eveningWind <= 3.5) {
     calmBonus = 20
   }
 
@@ -171,7 +201,7 @@ function evaluate(daily) {
 
   return {
     score, level, maxWind, maxWindDate, maxWindDir, daysAgo, windNote,
-    todayWind, rain3, calmBonus, nextWind, nextDir,
+    todayWind, eveningWind, rain3, calmBonus, nextWind, nextDir,
   }
 }
 
@@ -201,7 +231,7 @@ function buildEmail(results, todayStr) {
         直近の強風: ${r.maxWind.toFixed(1)}m/s ${r.windNote}（${r.maxWindDate} / ${r.maxWindDir}、${r.daysAgo}日前）
       </p>
       <p style="margin:3px 0;color:#374151;font-size:13px;">
-        本日の風: ${r.todayWind.toFixed(1)}m/s ／ 過去3日間の降水量: ${r.rain3.toFixed(0)}mm
+        本日の風: ${r.todayWind.toFixed(1)}m/s（夜間平均: ${r.eveningWind != null ? r.eveningWind.toFixed(1) + 'm/s' : '不明'}） ／ 過去3日間の降水量: ${r.rain3.toFixed(0)}mm
       </p>
       <p style="margin:3px 0;color:#6b7280;font-size:12px;">
         明日の予報: ${r.nextWind.toFixed(1)}m/s ${r.nextDir}
@@ -233,8 +263,8 @@ async function main() {
   const results = []
   for (const loc of LOCATIONS) {
     try {
-      const daily = await fetchDaily(loc.lat, loc.lon)
-      const evalResult = evaluate(daily)
+      const { daily, hourly } = await fetchWeather(loc.lat, loc.lon)
+      const evalResult = evaluate(daily, hourly)
       results.push({ name: loc.name, ...evalResult })
       console.log(`${loc.name}: ${evalResult.level}（${evalResult.score}点）`)
     } catch (e) {
