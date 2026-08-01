@@ -147,7 +147,7 @@ export function evaluate(daily: DailyData, hourly: HourlyData): EvalResult {
   const eveningWind = eveningAvgWind(hourly, todayStr)
   let calmBonus = 0
   if (windScore > 0 && eveningWind != null && eveningWind <= 3.5) {
-    calmBonus = 20
+    calmBonus = 30
   }
 
   let rainScore = 0
