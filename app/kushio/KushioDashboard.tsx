@@ -43,7 +43,7 @@ function LocationCard({ r }: { r: LocationResultWithHistory }) {
       </p>
 
       <div className="mt-3 pt-3 border-t border-sky-50">
-        <p className="text-gray-400 text-[11px] mb-1.5">過去7日間の推移</p>
+        <p className="text-gray-400 text-[11px] mb-1.5">過去7日間〜今後の予報</p>
         <div className="flex gap-1.5 overflow-x-auto pb-1">
           {r.history.map((h) => (
             <div
@@ -51,6 +51,15 @@ function LocationCard({ r }: { r: LocationResultWithHistory }) {
               className={`${levelColorSoft(h.level)} flex-shrink-0 rounded-lg px-2 py-1.5 text-center min-w-[46px]`}
             >
               <div className="text-[10px] opacity-70">{formatMD(h.date)}</div>
+              <div className="text-[12px] font-bold">{h.score}</div>
+            </div>
+          ))}
+          {r.forecast.map((h) => (
+            <div
+              key={h.date}
+              className={`${levelColorSoft(h.level)} flex-shrink-0 rounded-lg px-2 py-1.5 text-center min-w-[46px] border border-dashed border-current opacity-70`}
+            >
+              <div className="text-[10px] opacity-70">{formatMD(h.date)}予報</div>
               <div className="text-[12px] font-bold">{h.score}</div>
             </div>
           ))}

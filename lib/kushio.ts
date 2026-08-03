@@ -14,7 +14,9 @@
 // ────────────────────────────────────────────────────────────────
 
 export const PAST_DAYS = 5
-export const FORECAST_DAYS = 3
+// 予報は2日先まで表示。各日のnextWind算出にもう1日分必要なため+1
+export const FORECAST_VIEW_DAYS = 2
+export const FORECAST_DAYS = FORECAST_VIEW_DAYS + 1
 export const TODAY_IDX = PAST_DAYS
 
 // 過去7日分の履歴を表示するために必要な取得日数
@@ -205,9 +207,10 @@ export type HistoryDay = {
   level: '低' | '中' | '高'
 }
 
-export type LocationResultWithHistory = LocationResult & { history: HistoryDay[] }
+export type LocationResultWithHistory = LocationResult & { history: HistoryDay[]; forecast: HistoryDay[] }
 
-// 現在値に加えて、過去HISTORY_DAYS日分（今日を含む）のスコア推移も返す
+// 現在値に加えて、過去HISTORY_DAYS日分（今日を含む）のスコア推移と
+// FORECAST_VIEW_DAYS日分の予報スコアも返す
 export async function evaluateAllLocationsWithHistory(): Promise<{ todayStr: string; results: LocationResultWithHistory[] }> {
   const results: LocationResultWithHistory[] = []
   for (const loc of LOCATIONS) {
@@ -220,7 +223,12 @@ export async function evaluateAllLocationsWithHistory(): Promise<{ todayStr: str
         const r = evaluate(daily, hourly, idx)
         history.push({ date: r.date, score: r.score, level: r.level })
       }
-      results.push({ name: loc.name, ...current, history })
+      const forecast: HistoryDay[] = []
+      for (let idx = todayIdx + 1; idx <= todayIdx + FORECAST_VIEW_DAYS; idx++) {
+        const r = evaluate(daily, hourly, idx)
+        forecast.push({ date: r.date, score: r.score, level: r.level })
+      }
+      results.push({ name: loc.name, ...current, history, forecast })
     } catch {
       // 取得失敗した地点はスキップ
     }
