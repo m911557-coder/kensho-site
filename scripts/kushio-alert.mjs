@@ -1,9 +1,5 @@
-import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
 import webpush from 'web-push'
-
-const resend = new Resend(process.env.RESEND_API_KEY)
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -205,55 +201,13 @@ function evaluate(daily, hourly) {
   }
 }
 
-function levelColor(level) {
-  if (level === '高') return '#dc2626'
-  if (level === '中') return '#d97706'
-  return '#6b7280'
-}
-
-function buildEmail(results, todayStr) {
+function buildSubject(results) {
   const top = results[0]
-  const overallLevel = top.level
-
-  const subject = overallLevel === '高'
+  return top.level === '高'
     ? `⚠️ 苦潮の可能性【高】${top.name.split('（')[0]}など`
-    : overallLevel === '中'
+    : top.level === '中'
       ? `🔶 苦潮の可能性【中】${top.name.split('（')[0]}など`
       : `📋 本日の苦潮チェック（可能性:低）`
-
-  const rows = results.map(r => `
-    <div style="border:1px solid #bae6fd;border-radius:8px;padding:14px;margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <h3 style="color:#0369a1;margin:0;font-size:15px;">${r.name}</h3>
-        <span style="background:${levelColor(r.level)};color:white;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:bold;">${r.level}（${r.score}点）</span>
-      </div>
-      <p style="margin:8px 0 3px;color:#374151;font-size:13px;">
-        直近の強風: ${r.maxWind.toFixed(1)}m/s ${r.windNote}（${r.maxWindDate} / ${r.maxWindDir}、${r.daysAgo}日前）
-      </p>
-      <p style="margin:3px 0;color:#374151;font-size:13px;">
-        本日の風: ${r.todayWind.toFixed(1)}m/s（夜間平均: ${r.eveningWind != null ? r.eveningWind.toFixed(1) + 'm/s' : '不明'}） ／ 過去3日間の降水量: ${r.rain3.toFixed(0)}mm
-      </p>
-      <p style="margin:3px 0;color:#6b7280;font-size:12px;">
-        明日の予報: ${r.nextWind.toFixed(1)}m/s ${r.nextDir}
-      </p>
-    </div>
-  `).join('')
-
-  return {
-    subject,
-    html: `
-      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-        <div style="background:linear-gradient(135deg,#0284c7,#38bdf8);padding:20px;border-radius:12px;text-align:center;margin-bottom:20px;">
-          <h1 style="color:white;margin:0;font-size:18px;">🌊 苦潮チェック（${todayStr}）</h1>
-          <p style="color:rgba(255,255,255,0.9);margin:6px 0 0;font-size:13px;">白塚漁港〜宮川河口（伊勢湾西岸）</p>
-        </div>
-        ${rows}
-        <p style="color:#9ca3af;font-size:11px;text-align:center;margin-top:16px;">
-          ※ 過去の実績（2023〜2025年）と気象傾向から算出した簡易推定です。潮回りとの相関は確認できなかったため考慮していません。実際の可否は現地の水色・臭いなどで最終判断してください。
-        </p>
-      </div>
-    `,
-  }
 }
 
 async function main() {
@@ -285,21 +239,7 @@ async function main() {
     return
   }
 
-  const { subject, html } = buildEmail(results, todayStr)
-
-  const { error } = await resend.emails.send({
-    from: '苦潮アラート <onboarding@resend.dev>',
-    to: ADMIN_EMAIL,
-    subject,
-    html,
-  })
-  if (error) {
-    console.error(`メール送信エラー: ${JSON.stringify(error)}`)
-    process.exitCode = 1
-  } else {
-    console.log(`結果メール送信: ${ADMIN_EMAIL}`)
-  }
-
+  const subject = buildSubject(results)
   const top = results[0]
   const pushBody = `${top.name}: ${top.level}（${top.score}点）`
   await sendPushNotifications(subject, pushBody)
