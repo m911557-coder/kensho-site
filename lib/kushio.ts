@@ -11,6 +11,18 @@
 // 実際に苦潮・大漁だった）。そのため凪ボーナスは日最大風速の比率では
 // なく、当日夜（20時〜翌1時）の時間別風速の平均が穏やかかどうかを
 // 直接見て判定する。
+//
+// 【風向きについて】
+// 白塚〜宮川河口はいずれも伊勢湾西岸に位置し、海岸線はほぼ南北方向で
+// 海（伊勢湾）は東側にある（宮川河口の大湊海岸が初日の出スポットで
+// あることからも東向きの浜と確認）。つまりオフショア（陸から沖へ
+// 向かう風）はどの地点も概ね「西」系統になる。
+// 実績（8/3松名瀬=苦潮発生・魚打ち上げ確認、8/9松名瀬=何も無し）を
+// 比較すると、成功例のトリガー風向は西・西北西・北西・南南西と
+// オフショア系統に偏り、唯一の失敗例は東南東（オンショア）だった。
+// これはオフショア風が表層水を沖に押し出し、その分底の貧酸素水が
+// 岸側に上がってくるという物理的な仕組みとも整合するため、
+// トリガー日選定・風スコアに方向による重み付けを加える。
 // ────────────────────────────────────────────────────────────────
 
 export const PAST_DAYS = 5
@@ -111,6 +123,21 @@ function recencyWeight(daysAgo: number): number {
   return 0.7 // 4-5日前
 }
 
+// 2点間の角度の差（0-180度）
+function angularDiff(a: number, b: number): number {
+  const d = Math.abs(a - b) % 360
+  return d > 180 ? 360 - d : d
+}
+
+// オフショア（西系、沖に向かう風）を優遇し、オンショア（東系）を減点する
+function directionMultiplier(deg: number | null | undefined): number {
+  if (deg == null) return 1.0
+  const diff = angularDiff(deg, 270) // 270度=西（この海岸のオフショア方向）
+  if (diff <= 75) return 1.3 // オフショア
+  if (diff >= 105) return 0.2 // オンショア
+  return 1.0 // 南北寄りの沿岸風は中立
+}
+
 export type EvalResult = {
   date: string
   score: number
@@ -136,7 +163,7 @@ export function evaluate(daily: DailyData, hourly: HourlyData, todayIdx: number 
   let maxWind = -1, maxIdx = -1, bestWeighted = -1
   pastWind.forEach((w, i) => {
     const daysAgo = PAST_DAYS - i
-    const weighted = windBase(w) * recencyWeight(daysAgo)
+    const weighted = windBase(w) * recencyWeight(daysAgo) * directionMultiplier(pastDirs[i])
     if (weighted > bestWeighted) { bestWeighted = weighted; maxWind = w; maxIdx = i }
   })
   const daysAgo = PAST_DAYS - maxIdx
