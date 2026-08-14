@@ -263,6 +263,139 @@ async function extractFromArticle(articleUrl) {
   }
 }
 
+// ke-ma.net LINEカテゴリページから新着記事URLを取得
+async function getKemaArticleUrls(existingSourceUrls) {
+  const urls = new Set()
+  const pages = [
+    'https://ke-ma.net/line/',
+    'https://ke-ma.net/line/page/2/',
+    'https://ke-ma.net/line/page/3/',
+  ]
+  for (const pageUrl of pages) {
+    try {
+      const res = await fetch(pageUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(10000)
+      })
+      if (!res.ok) { console.log(`[ke-ma] ${pageUrl}: HTTP ${res.status}`); continue }
+      const html = await res.text()
+
+      // ke-ma.net の記事URLパターン: /数字/ 形式
+      const matches = html.matchAll(/href="(https:\/\/ke-ma\.net\/\d{4,}\/?)"/g)
+      let count = 0
+      for (const m of matches) {
+        const url = m[1]
+        if (!existingSourceUrls.has(url)) {
+          urls.add(url)
+          count++
+        }
+      }
+      console.log(`[ke-ma] ${pageUrl}: ${count}件の新着URL`)
+    } catch (e) {
+      console.log(`[ke-ma] ページ取得エラー: ${pageUrl} → ${e.message}`)
+    }
+  }
+  return [...urls].slice(0, 20)
+}
+
+// ke-ma.net 記事ページからキャンペーン情報・LINE URLを抽出
+async function extractFromKemaArticle(articleUrl) {
+  try {
+    const res = await fetch(articleUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'ja,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(12000)
+    })
+    if (!res.ok) return null
+    const html = await res.text()
+
+    // ── LINE URL 取得 ──
+    let lineUrl = null
+
+    // パターン1: 直接 lin.ee / line.me リンク
+    const directMatch = html.match(/href="(https:\/\/(lin\.ee\/[A-Za-z0-9]+|line\.me\/ti\/p\/@[A-Za-z0-9_-]+|liff\.line\.me\/[^"]+|page\.line\.me\/[A-Za-z0-9_-]+))"/i)
+    if (directMatch) lineUrl = cleanLineUrl(directMatch[1])
+
+    // パターン2: テキスト中の LINE URL
+    if (!lineUrl) {
+      const m = html.match(/https:\/\/(lin\.ee\/[A-Za-z0-9]+|line\.me\/ti\/p\/@[A-Za-z0-9_-]+|page\.line\.me\/[A-Za-z0-9_-]+)/)
+      if (m) lineUrl = cleanLineUrl(m[0])
+    }
+
+    // パターン3: 外部キャンペーンURLからLINE URLを探す
+    // ※ SNS・PR・ニュース・ブックマーク等の非キャンペーンサイトは除外
+    const EXCLUDED_DOMAINS = /ke-ma\.net|twitter\.com|x\.com|instagram\.com|youtube\.com|tiktok\.com|amazon\.co\.jp|rakuten\.co\.jp|wp-content|google\.|prtimes\.jp|hatena\.|note\.com|ameblo\.jp|livedoor|excite\.|fc2\.|blogspot\.|appbank\.net|news\.yahoo|goo\.ne\.jp|itmedia|nikkei\.com|asahi\.com|mainichi\.jp/
+    if (!lineUrl) {
+      const extLinks = [...html.matchAll(/href="(https?:\/\/[^"#]+)"/gi)]
+        .map(m => m[1])
+        .filter(u => u.startsWith('https') && !EXCLUDED_DOMAINS.test(u))
+        .slice(0, 3)
+      for (const extUrl of extLinks) {
+        const found = await fetchLineUrlFromPage(extUrl, true)
+        if (found) { lineUrl = found; break }
+      }
+    }
+
+    if (!lineUrl) return null
+
+    // ── タイトル取得 ──
+    let title = null
+    const h1 = html.match(/<h1[^>]*>([^<]+)<\/h1>/i)
+    if (h1) title = h1[1].replace(/\s+/g, ' ').trim()
+    if (!title) {
+      const titleTag = html.match(/<title>([^<]+)<\/title>/i)
+      if (titleTag) title = titleTag[1].replace(/[\s|｜\-–—]+.*(ke-ma|懸賞|キャンペーン情報).*$/i, '').trim()
+    }
+    if (!title || title.length < 5) return null
+
+    // リスト記事・情報収集記事はスキップ
+    if (/一覧|リスト|まとめ|収集/.test(title) && !/当たる|プレゼント|懸賞|キャンペーン/.test(title)) return null
+
+    // ── 当選者数 ──
+    const winnersMatch = html.match(/(\d[\d,]+)\s*名/)
+    const winnersCount = winnersMatch ? parseInt(winnersMatch[1].replace(/,/g, ''), 10) : null
+
+    // ── 締切日 ──
+    let deadline = null
+    const dateMatches = [...html.matchAll(/(\d{4})年(\d{1,2})月(\d{1,2})日/g)]
+    const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
+    for (const d of dateMatches) {
+      const candidate = `${d[1]}-${d[2].padStart(2, '0')}-${d[3].padStart(2, '0')}`
+      if (candidate >= today && candidate <= '2030-12-31') {
+        deadline = candidate
+        break
+      }
+    }
+
+    // ── 企業名推定 ──
+    const companyMap = [
+      ['アサヒビール', 'アサヒビール'], ['サントリー', 'サントリー'],
+      ['キリン', 'キリン'], ['コカ・コーラ', 'コカ・コーラ'],
+      ['コカコーラ', 'コカ・コーラ'], ['ローソン', 'ローソン'],
+      ['ファミリーマート', 'ファミリーマート'], ['セブンイレブン', 'セブン-イレブン'],
+      ['セブン-イレブン', 'セブン-イレブン'], ['明治', '明治'],
+      ['カルビー', 'カルビー'], ['森永', '森永製菓'],
+      ['江崎グリコ', '江崎グリコ'], ['日清', '日清食品'],
+      ['ネスレ', 'ネスレ'], ['伊藤園', '伊藤園'],
+      ['ハーゲンダッツ', 'ハーゲンダッツ'], ['資生堂', '資生堂'],
+      ['花王', '花王'], ['P&G', 'P&G'],
+    ]
+    let company = null
+    const searchText = title + html.slice(0, 3000)
+    for (const [kw, name] of companyMap) {
+      if (searchText.includes(kw)) { company = name; break }
+    }
+
+    return { title, lineUrl, winnersCount, deadline, company, sourceUrl: articleUrl }
+  } catch (e) {
+    console.log(`[ke-ma] 記事取得エラー: ${articleUrl} → ${e.message}`)
+    return null
+  }
+}
+
 // kensho-news.com カテゴリページから新着記事URLを取得
 // ※ URL（リンク先情報）のみ収集 — 著作権対象外（事実）
 async function getNewArticleUrls(existingSourceUrls) {
@@ -386,21 +519,30 @@ async function main() {
   const { titles, sourceUrls, lineUrls } = await getExistingData()
   console.log(`既存件数: ${titles.size}`)
 
-  const articleUrls = await getNewArticleUrls(sourceUrls)
-  console.log(`処理対象の新着記事: ${articleUrls.length}件`)
+  // kensho-news.com と ke-ma.net の両方から記事URLを収集
+  const kenshoUrls = await getNewArticleUrls(sourceUrls)
+  const kemaUrls = await getKemaArticleUrls(sourceUrls)
+  const allArticles = [
+    ...kenshoUrls.map(u => ({ url: u, source: 'kensho-news' })),
+    ...kemaUrls.map(u => ({ url: u, source: 'ke-ma' })),
+  ]
+  console.log(`処理対象の新着記事: kensho-news=${kenshoUrls.length}件 / ke-ma=${kemaUrls.length}件`)
 
-  if (articleUrls.length === 0) {
+  if (allArticles.length === 0) {
     console.log('新着記事なし。終了。')
+    await sendResultEmail([], 0)
     return
   }
 
   const addedItems = []
   let skippedCount = 0
 
-  for (const articleUrl of articleUrls) {
-    const info = await extractFromArticle(articleUrl)
+  for (const { url: articleUrl, source } of allArticles) {
+    const info = source === 'ke-ma'
+      ? await extractFromKemaArticle(articleUrl)
+      : await extractFromArticle(articleUrl)
     if (!info || !info.lineUrl) {
-      console.log(`スキップ（LINE URL未取得）: ${articleUrl}`)
+      console.log(`スキップ（LINE URL未取得）[${source}]: ${articleUrl}`)
       skippedCount++
       continue
     }
