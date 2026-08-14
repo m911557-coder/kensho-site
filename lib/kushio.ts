@@ -189,6 +189,16 @@ export function evaluate(daily: DailyData, hourly: HourlyData, todayIdx: number 
   if (rain3 >= 50) rainScore = 20
   else if (rain3 >= 20) rainScore = 10
 
+  // 強風（6.5m/s以上）と大雨（30mm以上）が同時に来ると、層が分離した
+  // 状態を保てず水全体がかき混ぜられ、逆に苦潮が起きにくくなると
+  // 見られる（2026-08-13は軽い苦潮の実績があったが、雨が23mm→36mmに
+  // 増えた8/14には不発だった）。そのため強風+大雨の組み合わせには
+  // 撹拌ペナルティを課す。
+  let disturbancePenalty = 0
+  if (maxWind >= 6.5 && rain3 >= 30) {
+    disturbancePenalty = -40
+  }
+
   const hasTrigger = windScore > 0 || rainScore > 0
   let seasonScore = 0
   if (hasTrigger) {
@@ -196,7 +206,7 @@ export function evaluate(daily: DailyData, hourly: HourlyData, todayIdx: number 
     else if (month === 7 || month === 10) seasonScore = 5
   }
 
-  const score = Math.round(Math.min(100, seasonScore + windScore + calmBonus + rainScore))
+  const score = Math.round(Math.max(0, Math.min(100, seasonScore + windScore + calmBonus + rainScore + disturbancePenalty)))
   let level: '低' | '中' | '高' = '低'
   if (score >= 45) level = '高'
   else if (score >= 20) level = '中'
