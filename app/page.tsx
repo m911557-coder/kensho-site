@@ -1,5 +1,6 @@
 import { supabase, Kensho } from '@/lib/supabase'
 import KenshoList from './components/KenshoList'
+import AffiliateSection from './components/AffiliateSection'
 
 export const revalidate = 300
 
@@ -93,6 +94,9 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* アフィリエイトバナー */}
+      <AffiliateSection />
+
       {/* 懸賞一覧（フィルター・ソート付き） */}
       <KenshoList items={list} />
 
@@ -121,7 +125,10 @@ export default async function Home() {
               お問い合わせ
             </a>
           </div>
-          <p className="text-xs text-gray-600 mt-3">© 2026 LINE懸賞まとめ</p>
+          <p className="text-xs text-gray-600 mt-6 pt-4 border-t border-gray-700">
+            本サイトはアフィリエイト広告（もしもアフィリエイト）を掲載しています。
+          </p>
+          <p className="text-xs text-gray-600 mt-1">© 2026 LINE懸賞まとめ</p>
         </div>
       </footer>
     </main>
