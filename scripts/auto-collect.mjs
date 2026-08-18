@@ -477,7 +477,7 @@ function detectCategory(title) {
 }
 
 // 追加結果を通知メールで送信
-async function sendResultEmail(added, skipped) {
+async function sendResultEmail(added, skipped, deleted = []) {
   if (added.length === 0 && skipped === 0) return
   const rows = added.map(item => `
     <div style="border:1px solid #fed7aa;border-radius:8px;padding:14px;margin-bottom:12px;">
@@ -492,15 +492,23 @@ async function sendResultEmail(added, skipped) {
     from: 'LINE懸賞まとめ <onboarding@resend.dev>',
     to: ADMIN_EMAIL,
     subject: added.length > 0
-      ? `✅ 懸賞 ${added.length}件を自動追加しました`
+      ? `✅ 懸賞 ${added.length}件追加・${deleted.length}件削除`
+      : deleted.length > 0
+      ? `🗑️ 期限切れ ${deleted.length}件削除（新着なし）`
       : `📋 本日の懸賞リサーチ完了（新着なし）`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
         <div style="background:linear-gradient(135deg,#f97316,#fb923c);padding:20px;border-radius:12px;text-align:center;margin-bottom:20px;">
           <h1 style="color:white;margin:0;font-size:18px;">${added.length > 0 ? `✅ ${added.length}件 自動追加完了` : '📋 本日の懸賞リサーチ完了'}</h1>
           ${skipped > 0 ? `<p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:13px;">（${skipped}件はLINE URL取得できずスキップ）</p>` : ''}
+          ${deleted.length > 0 ? `<p style="color:rgba(255,255,255,0.85);margin:4px 0 0;font-size:13px;">🗑️ 期限切れ ${deleted.length}件を自動削除</p>` : ''}
         </div>
         ${rows || '<p style="text-align:center;color:#6b7280;">本日は新着懸賞なし。引き続き自動監視中。</p>'}
+        ${deleted.length > 0 ? `
+        <div style="background:#f3f4f6;border-radius:8px;padding:12px;margin-top:12px;">
+          <p style="margin:0 0 6px;font-size:12px;color:#6b7280;">🗑️ 削除した期限切れキャンペーン</p>
+          ${deleted.map(d => `<p style="margin:2px 0;font-size:12px;color:#9ca3af;">・${d.title}</p>`).join('')}
+        </div>` : ''}
         <div style="text-align:center;margin:20px 0;">
           <a href="${SITE_URL}" style="background:linear-gradient(135deg,#f97316,#fb923c);color:white;padding:12px 30px;border-radius:50px;text-decoration:none;font-weight:bold;">
             サイトを確認する →
@@ -512,9 +520,34 @@ async function sendResultEmail(added, skipped) {
   console.log(`結果メール送信: ${ADMIN_EMAIL}`)
 }
 
+// 期限切れキャンペーンを自動削除
+async function deleteExpiredCampaigns() {
+  const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const { data, error } = await supabase
+    .from('kensho')
+    .delete()
+    .lt('deadline', today)
+    .select('title')
+  if (error) {
+    console.log(`期限切れ削除エラー: ${error.message}`)
+    return []
+  }
+  const deleted = data || []
+  if (deleted.length > 0) {
+    console.log(`期限切れ削除: ${deleted.length}件`)
+    deleted.forEach(d => console.log(`  - ${d.title}`))
+  } else {
+    console.log('期限切れキャンペーン: なし')
+  }
+  return deleted
+}
+
 async function main() {
   const jstHour = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours()
   console.log(`===== 自動収集開始 JST ${jstHour}時 =====`)
+
+  // 期限切れキャンペーンを先に削除
+  const deletedItems = await deleteExpiredCampaigns()
 
   const { titles, sourceUrls, lineUrls } = await getExistingData()
   console.log(`既存件数: ${titles.size}`)
@@ -590,9 +623,9 @@ async function main() {
     await new Promise(r => setTimeout(r, 1000))
   }
 
-  console.log(`\n===== 完了 追加: ${addedItems.length}件 / スキップ: ${skippedCount}件 =====`)
+  console.log(`\n===== 完了 追加: ${addedItems.length}件 / スキップ: ${skippedCount}件 / 削除: ${deletedItems.length}件 =====`)
 
-  await sendResultEmail(addedItems, skippedCount)
+  await sendResultEmail(addedItems, skippedCount, deletedItems)
 }
 
 main().catch(console.error)
