@@ -1,0 +1,28 @@
+name: サイト監視
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # 6時間ごと（JST 03:00 / 09:00 / 15:00 / 21:00）
+  workflow_dispatch:         # 手動実行も可能
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: パッケージインストール
+        run: npm ci
+
+      - name: サイト監視実行
+        run: node scripts/site-monitor.mjs
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          SITE_URL: https://kensho-site.vercel.app
