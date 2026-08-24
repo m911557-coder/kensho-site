@@ -81,12 +81,58 @@ export async function fetchWeather(lat: number, lon: number, pastDays: number = 
     const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
     if (!res.ok) throw new Error(`Open-Meteo error ${res.status}`)
     const json = await res.json()
-    return { daily: json.daily, hourly: json.hourly }
+    const daily: DailyData = json.daily
+    const hourly: HourlyData = json.hourly
+    // 予報APIの過去日は暫定値のため、確定済み（アーカイブ）データがあれば上書きする
+    await overlayArchiveData(lat, lon, daily, hourly)
+    return { daily, hourly }
   } catch (e) {
     if (!retried) {
       return fetchWeather(lat, lon, pastDays, true)
     }
     throw e
+  }
+}
+
+// Open-Meteoの予報APIは直近の「過去」データもモデル推定の暫定値を返し、
+// 数日後に確定値（アーカイブ）へ置き換わることがある（例: 5.6m/s暫定→
+// 4.4m/s確定で、5.3m/sの閾値をまたいでスコアが変わってしまった実例あり）。
+// アーカイブは前日分まで確定しているため、それより古い日は確定値で
+// 上書きし、スコアが後から変動するのを防ぐ。
+async function overlayArchiveData(lat: number, lon: number, daily: DailyData, hourly: HourlyData): Promise<void> {
+  const earliestDate = daily.time[0]
+  const nowJST = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  nowJST.setUTCDate(nowJST.getUTCDate() - 1)
+  const yesterday = nowJST.toISOString().split('T')[0]
+  if (earliestDate > yesterday) return
+
+  try {
+    const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${earliestDate}&end_date=${yesterday}&daily=wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,precipitation_sum,temperature_2m_max&hourly=wind_speed_10m&timezone=Asia%2FTokyo&wind_speed_unit=ms`
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
+    if (!res.ok) return
+    const archive = await res.json()
+    if (!archive.daily?.time || !archive.hourly?.time) return
+
+    const dailyIndex = new Map(daily.time.map((t, i) => [t, i]))
+    const dailyFields: (keyof DailyData)[] = ['wind_speed_10m_max', 'wind_gusts_10m_max', 'wind_direction_10m_dominant', 'precipitation_sum', 'temperature_2m_max']
+    archive.daily.time.forEach((t: string, i: number) => {
+      const idx = dailyIndex.get(t)
+      if (idx == null) return
+      for (const field of dailyFields) {
+        const v = archive.daily[field]?.[i]
+        if (v != null) daily[field][idx] = v
+      }
+    })
+
+    const hourlyIndex = new Map(hourly.time.map((t, i) => [t, i]))
+    archive.hourly.time.forEach((t: string, i: number) => {
+      const idx = hourlyIndex.get(t)
+      if (idx == null) return
+      const v = archive.hourly.wind_speed_10m?.[i]
+      if (v != null) hourly.wind_speed_10m[idx] = v
+    })
+  } catch {
+    // アーカイブ取得に失敗しても暫定値のまま処理を続行する
   }
 }
 
