@@ -5,6 +5,14 @@ export const metadata = {
 
 const posts = [
   {
+    slug: 'how-to-apply',
+    title: 'LINE懸賞の応募方法【初心者向け】スマホで簡単3ステップ',
+    description: '友だち追加からアンケート回答まで、LINE懸賞への応募手順をスマホで3分でできるようにわかりやすく解説します。',
+    date: '2026年8月',
+    emoji: '📱',
+    category: '初心者ガイド',
+  },
+  {
     slug: 'won-sui-gin-soda',
     title: '【当選報告】サントリー 翠ジンソーダがファミマのLINEクーポンで当たりました！',
     description: 'ファミリーマートのLINEクーポンで翠ジンソーダ350ml缶が当選！体験談と引換クーポンの使い方を紹介します。',
