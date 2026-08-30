@@ -1,47 +1,34 @@
 'use client'
 
-// もしもアフィリエイト Amazon.co.jp バナー
-// 承認後: Vercel環境変数に NEXT_PUBLIC_MOSHIMO_A_ID を追加すると自動で表示される
-const MOSHIMO_A_ID = process.env.NEXT_PUBLIC_MOSHIMO_A_ID
-
 export default function AffiliateSection() {
-  if (!MOSHIMO_A_ID) return null
-
   return (
     <div className="max-w-5xl mx-auto px-6 py-4">
       <div className="bg-white rounded-xl border border-orange-100 px-5 py-4 flex flex-col sm:flex-row items-center gap-4 shadow-sm">
         <div className="flex-1">
           <p className="text-xs text-gray-400 mb-1">PR</p>
           <p className="text-sm font-bold text-gray-700">
-            懸賞に当たったら何を買う？Amazonで今すぐチェック
+            懸賞で旅行を当てたら、楽天トラベルでもお得に！
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            Amazonギフトカードが当たる懸賞を多数掲載中！
+            国内・海外ホテル・航空券の予約はRakuten Travel
           </p>
         </div>
         <a
-          href={`https://af.moshimo.com/af/c/click?a_id=${MOSHIMO_A_ID}&p_id=170&pc_id=185&pl_id=4062&url=https%3A%2F%2Fwww.amazon.co.jp%2F`}
+          href="https://rpx.a8.net/svt/ejp?a8mat=4BAI1M+2Z61O2+2HOM+6I9N5&rakuten=y&a8ejpredirect=http%3A%2F%2Fhb.afl.rakuten.co.jp%2Fhgc%2F0eb4779e.5d30c5ba.0eb4779f.b871e4e3%2Fa26083051346_4BAI1M_2Z61O2_2HOM_6I9N5%3Fpc%3Dhttp%253A%252F%252Ftravel.rakuten.co.jp%252F%26m%3Dhttp%253A%252F%252Ftravel.rakuten.co.jp%252F"
           rel="nofollow"
-          referrerPolicy="no-referrer-when-downgrade"
           target="_blank"
           className="shrink-0"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`https://image.moshimo.com/af-img/0170/000000185.gif`}
-            width={120}
-            height={60}
-            alt="Amazon.co.jp"
+            src="http://hbb.afl.rakuten.co.jp/hsb/0ea7f9a4.79280dcb.0ea7f99d.1ac92fca/153145/"
+            border="0"
+            alt="楽天トラベル"
             style={{ border: 'none' }}
           />
         </a>
-        {/* インプレッション計測 */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={`https://i.moshimo.com/af/i/impression?a_id=${MOSHIMO_A_ID}&p_id=170&pc_id=185&pl_id=4062`}
-          alt=""
-          style={{ border: 'none', width: 1, height: 1 }}
-        />
+        <img border="0" width="1" height="1" src="https://www18.a8.net/0.gif?a8mat=4BAI1M+2Z61O2+2HOM+6I9N5" alt="" />
       </div>
     </div>
   )

@@ -126,7 +126,7 @@ export default async function Home() {
             </a>
           </div>
           <p className="text-xs text-gray-600 mt-6 pt-4 border-t border-gray-700">
-            本サイトはアフィリエイト広告（もしもアフィリエイト）を掲載しています。
+            本サイトはアフィリエイト広告（A8.net・楽天アフィリエイト）を掲載しています。
           </p>
           <p className="text-xs text-gray-600 mt-1">© 2026 LINE懸賞まとめ</p>
         </div>
