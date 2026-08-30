@@ -5,6 +5,30 @@ export const metadata = {
 
 const posts = [
   {
+    slug: 'won-konbini-sweets',
+    title: '【当選報告】ローソンのLINE懸賞でスイーツが当たりました！',
+    description: 'ローソン公式LINEのキャンペーンでコンビニスイーツが当選！応募から引換までの体験をレポートします。',
+    date: '2026年8月',
+    emoji: '🍰',
+    category: '当選報告',
+  },
+  {
+    slug: 'best-time-to-apply',
+    title: '懸賞が当たりやすい時期・曜日はいつ？データから読み解く応募戦略',
+    description: '応募者が少ない時間帯・曜日・シーズンを狙うコツをご紹介。タイミングを変えるだけで当選確率が変わります。',
+    date: '2026年8月',
+    emoji: '⏰',
+    category: '攻略法',
+  },
+  {
+    slug: 'daily-apply-tips',
+    title: 'LINE懸賞を毎日続けるコツ【習慣化で当選率アップ】',
+    description: '無理なく毎日応募を続けるための習慣化のコツと、効率的な応募ルーティンをご紹介します。',
+    date: '2026年8月',
+    emoji: '🔄',
+    category: '継続のコツ',
+  },
+  {
     slug: 'how-to-apply',
     title: 'LINE懸賞の応募方法【初心者向け】スマホで簡単3ステップ',
     description: '友だち追加からアンケート回答まで、LINE懸賞への応募手順をスマホで3分でできるようにわかりやすく解説します。',
