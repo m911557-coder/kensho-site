@@ -22,13 +22,12 @@ export default function AffiliateSection() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="http://hbb.afl.rakuten.co.jp/hsb/0ea7f9a4.79280dcb.0ea7f99d.1ac92fca/153145/"
-            border="0"
             alt="楽天トラベル"
             style={{ border: 'none' }}
           />
         </a>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img border="0" width="1" height="1" src="https://www18.a8.net/0.gif?a8mat=4BAI1M+2Z61O2+2HOM+6I9N5" alt="" />
+        <img style={{ border: 'none' }} width="1" height="1" src="https://www18.a8.net/0.gif?a8mat=4BAI1M+2Z61O2+2HOM+6I9N5" alt="" />
       </div>
     </div>
   )
