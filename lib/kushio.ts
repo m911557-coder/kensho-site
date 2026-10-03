@@ -185,6 +185,15 @@ function directionMultiplier(deg: number | null | undefined): number {
   return 1.0 // 南北寄りの沿岸風は中立
 }
 
+// 風向きが海岸に対してどちら向きか（実測の表示用。点数計算の係数と同じ境界）
+export function windSide(deg: number | null | undefined): 'offshore' | 'onshore' | 'along' | null {
+  if (deg == null) return null
+  const diff = angularDiff(deg, 270)
+  if (diff <= 75) return 'offshore'
+  if (diff >= 105) return 'onshore'
+  return 'along'
+}
+
 export type EvalResult = {
   date: string
   score: number

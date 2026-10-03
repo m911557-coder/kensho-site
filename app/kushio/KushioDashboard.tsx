@@ -1,10 +1,63 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { LocationResultWithHistory } from '@/lib/kushio'
+import type { AmedasLive } from '@/lib/amedas'
 import NotifyButton from './NotifyButton'
 
 type ApiResponse = { todayStr: string; results: LocationResultWithHistory[] }
+
+const SIDE_LABEL = { offshore: '沖向き', onshore: '陸向き', along: '沿岸風' } as const
+const SIDE_STYLE = {
+  offshore: 'bg-emerald-100 text-emerald-700',
+  onshore: 'bg-rose-100 text-rose-700',
+  along: 'bg-gray-100 text-gray-600',
+} as const
+
+function AmedasPanel({ stations, error }: { stations: AmedasLive[] | null; error: boolean }) {
+  return (
+    <div className="border border-sky-100 rounded-xl p-4 bg-white shadow-sm">
+      <h2 className="text-sky-800 font-bold text-[15px]">現在の実測（気象庁アメダス）</h2>
+      {error && <p className="text-red-500 text-xs mt-2">実測を取得できませんでした。更新ボタンで再取得できます。</p>}
+      {!stations && !error && <p className="text-gray-400 text-xs mt-2">取得中...</p>}
+      {stations?.map((s) => (
+        <div key={s.id} className="mt-3 pt-3 border-t border-sky-50 first:mt-2 first:pt-0 first:border-t-0">
+          <div className="flex justify-between items-baseline">
+            <p className="text-sky-800 font-bold text-[14px]">
+              {s.name}
+              <span className="text-gray-400 font-normal text-[11px] ml-1.5">{s.covers}</span>
+            </p>
+            <span className="text-gray-400 text-[11px]">{s.time} 時点</span>
+          </div>
+          <p className="mt-1 text-gray-700 text-[14px]">
+            風 <span className="font-bold">{s.wind != null ? `${s.wind.toFixed(1)}m/s` : '不明'}</span> {s.dirName}
+            {s.side && (
+              <span className={`${SIDE_STYLE[s.side]} ml-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold`}>
+                {SIDE_LABEL[s.side]}
+              </span>
+            )}
+            <span className="text-gray-500 text-[12px] ml-2">
+              雨 {s.rain1h != null ? `${s.rain1h.toFixed(1)}mm/h` : '-'}
+            </span>
+          </p>
+          <p className="text-gray-400 text-[11px] mt-2 mb-1">直近12時間の推移（1時間ごと）</p>
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {s.hours.map((h) => (
+              <div key={h.label} className="flex-shrink-0 rounded-lg bg-sky-50 px-2 py-1.5 text-center min-w-[52px]">
+                <div className="text-[10px] text-gray-500">{h.label}</div>
+                <div className="text-[12px] font-bold text-sky-800">{h.wind != null ? h.wind.toFixed(1) : '-'}</div>
+                <div className="text-[10px] text-gray-500">{h.dirName}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      <p className="text-gray-400 text-[10px] mt-2 leading-relaxed">
+        10分ごとの実測（約20分遅れ）。実測値はこのアプリの点数の元データ（Open-Meteo）より約1.7倍大きく出ます。点数には使っていません。
+      </p>
+    </div>
+  )
+}
 
 function levelColor(level: string) {
   if (level === '高') return 'bg-red-600'
@@ -72,11 +125,40 @@ function LocationCard({ r }: { r: LocationResultWithHistory }) {
 export default function KushioDashboard({ initial }: { initial: ApiResponse }) {
   const [data, setData] = useState<ApiResponse>(initial)
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [amedas, setAmedas] = useState<AmedasLive[] | null>(null)
+  const [amedasError, setAmedasError] = useState(false)
+
+  const loadAmedas = useCallback(async () => {
+    try {
+      const res = await fetch('/api/amedas', { cache: 'no-store' })
+      if (!res.ok) throw new Error('failed')
+      const json: { stations: AmedasLive[] } = await res.json()
+      return json.stations
+    } catch {
+      return null
+    }
+  }, [])
+
+  const applyAmedas = useCallback((stations: AmedasLive[] | null) => {
+    if (stations) setAmedas(stations)
+    setAmedasError(stations == null)
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    loadAmedas().then((stations) => {
+      if (alive) applyAmedas(stations)
+    })
+    return () => {
+      alive = false
+    }
+  }, [loadAmedas, applyAmedas])
 
   async function handleRefresh() {
     setStatus('loading')
     try {
-      const res = await fetch('/api/kushio', { cache: 'no-store' })
+      const [res, stations] = await Promise.all([fetch('/api/kushio', { cache: 'no-store' }), loadAmedas()])
+      applyAmedas(stations)
       if (!res.ok) throw new Error('failed')
       const json: ApiResponse = await res.json()
       setData(json)
@@ -108,6 +190,8 @@ export default function KushioDashboard({ initial }: { initial: ApiResponse }) {
         {status === 'error' && (
           <p className="text-center text-red-500 text-xs">更新に失敗しました。時間をおいて再度お試しください。</p>
         )}
+
+        <AmedasPanel stations={amedas} error={amedasError} />
 
         {data.results.length === 0 && (
           <p className="text-center text-gray-500 text-sm py-8">データ取得に失敗しました。時間をおいて再度お試しください。</p>

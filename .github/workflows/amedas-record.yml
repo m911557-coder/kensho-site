@@ -1,0 +1,26 @@
+name: アメダス津 実測の記録
+
+on:
+  schedule:
+    # 日本時間（UTC = JST - 9時間）。気象庁は約11日分しか残さないので毎日保存する
+    - cron: '10 21 * * *'  # JST 06:10
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: パッケージインストール
+        run: npm ci
+
+      - name: 津観測所の実測を保存
+        run: node scripts/amedas-record.mjs --days=3
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
