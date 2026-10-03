@@ -164,7 +164,7 @@ function windBase(w: number): number {
   return 0
 }
 
-function recencyWeight(daysAgo: number): number {
+export function recencyWeight(daysAgo: number): number {
   if (daysAgo <= 2) return 1.0
   if (daysAgo === 3) return 0.85
   return 0.7 // 4-5日前
@@ -177,7 +177,7 @@ function angularDiff(a: number, b: number): number {
 }
 
 // オフショア（西系、沖に向かう風）を優遇し、オンショア（東系）を減点する
-function directionMultiplier(deg: number | null | undefined): number {
+export function directionMultiplier(deg: number | null | undefined): number {
   if (deg == null) return 1.0
   const diff = angularDiff(deg, 270) // 270度=西（この海岸のオフショア方向）
   if (diff <= 75) return 1.3 // オフショア

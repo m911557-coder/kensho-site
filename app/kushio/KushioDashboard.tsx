@@ -1,11 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import type { LocationResultWithHistory } from '@/lib/kushio'
+import type { DashboardData, DashboardResult } from '@/lib/dashboard'
 import type { AmedasLive } from '@/lib/amedas'
 import NotifyButton from './NotifyButton'
 
-type ApiResponse = { todayStr: string; results: LocationResultWithHistory[] }
+type ApiResponse = DashboardData
 
 const SIDE_LABEL = { offshore: '沖向き', onshore: '陸向き', along: '沿岸風' } as const
 const SIDE_STYLE = {
@@ -53,7 +53,7 @@ function AmedasPanel({ stations, error }: { stations: AmedasLive[] | null; error
         </div>
       ))}
       <p className="text-gray-400 text-[10px] mt-2 leading-relaxed">
-        10分ごとの実測（約20分遅れ）。実測値はこのアプリの点数の元データ（Open-Meteo）より約1.7倍大きく出ます。点数には使っていません。
+        10分ごとの実測（約20分遅れ）。点数の元データ（Open-Meteo）とは値の大きさが異なります（津は約1.3〜1.7倍、小俣は同程度）。点数には使っていません。
       </p>
     </div>
   )
@@ -76,7 +76,8 @@ function formatMD(dateStr: string) {
   return `${parseInt(m, 10)}/${parseInt(d, 10)}`
 }
 
-function LocationCard({ r }: { r: LocationResultWithHistory }) {
+function LocationCard({ r }: { r: DashboardResult }) {
+  const jmaToday = r.jma?.days[r.jma.days.length - 1]
   return (
     <div className="border border-sky-100 rounded-xl p-4 bg-white shadow-sm">
       <div className="flex justify-between items-center">
@@ -85,6 +86,18 @@ function LocationCard({ r }: { r: LocationResultWithHistory }) {
           {r.level}（{r.score}点）
         </span>
       </div>
+      {r.jma && (
+        <p className="mt-1.5 text-right text-[12px] text-gray-500">
+          気象庁版（実験中）：
+          {jmaToday?.level != null ? (
+            <span className={`${levelColorSoft(jmaToday.level)} ml-1 px-2 py-0.5 rounded-full font-bold`}>
+              {jmaToday.level}（{jmaToday.score}点）
+            </span>
+          ) : (
+            <span className="ml-1">算出できません</span>
+          )}
+        </p>
+      )}
       <p className="mt-2 text-gray-600 text-[13px]">
         直近の強風: {r.maxWind.toFixed(1)}m/s {r.windNote}（{r.maxWindDate} / {r.maxWindDir}、{r.daysAgo}日前）
       </p>
@@ -118,6 +131,25 @@ function LocationCard({ r }: { r: LocationResultWithHistory }) {
           ))}
         </div>
       </div>
+
+      {r.jma && (
+        <div className="mt-3 pt-3 border-t border-sky-50">
+          <p className="text-gray-400 text-[11px] mb-1.5">
+            気象庁版（実験中・{r.jma.station}の実測ベース）の過去7日間
+          </p>
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {r.jma.days.map((d) => (
+              <div
+                key={d.date}
+                className={`${d.level ? levelColorSoft(d.level) : 'bg-gray-50 text-gray-300'} flex-shrink-0 rounded-lg px-2 py-1.5 text-center min-w-[46px]`}
+              >
+                <div className="text-[10px] opacity-70">{formatMD(d.date)}</div>
+                <div className="text-[12px] font-bold">{d.score ?? '-'}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -203,6 +235,10 @@ export default function KushioDashboard({ initial }: { initial: ApiResponse }) {
         <NotifyButton />
 
         <p className="text-gray-400 text-[11px] text-center mt-4 leading-relaxed">
+          ※ 気象庁版は、津・小俣の実測と当日昼の風から作った実験用の点数です。今の点数と見分ける力に大きな差は確認できておらず、通知には使っていません。夜の凪は、過去日は実測、今日は予報で判定しています。予報日の分はありません。
+        </p>
+
+        <p className="text-gray-400 text-[11px] text-center mt-2 leading-relaxed">
           ※ 過去の実績（2023〜2025年）と気象傾向から算出した簡易推定です。潮回りとの相関は確認できなかったため考慮していません。実際の可否は現地の水色・臭いなどで最終判断してください。
         </p>
 

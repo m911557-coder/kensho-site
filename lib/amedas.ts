@@ -49,8 +49,9 @@ function dirDeg(o: Raw): number | null {
   return c == null || c === 0 ? null : (c * 22.5) % 360
 }
 
-async function getJson(url: string): Promise<Records> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(10000), cache: 'no-store' })
+// fresh=falseの時はキャッシュを許す（ページ表示用）。更新ボタン(API)は常に最新を取る
+async function getJson(url: string, fresh = true): Promise<Records> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(10000), ...(fresh ? { cache: 'no-store' as const } : {}) })
   if (res.status === 404) return {}
   if (!res.ok) throw new Error(`アメダス取得エラー ${res.status}`)
   return res.json()
@@ -115,6 +116,26 @@ async function fetchStation(st: (typeof AMEDAS_STATIONS)[number], latestMs: numb
     temp: val(last, 'temp'),
     hours,
   }
+}
+
+export type ObsPoint = { ms: number; wind: number | null; dir: number | null; rain1h: number | null }
+
+// 時刻ちょうど（毎時00分）の実測。点数の計算用に、直近hoursBack時間分を返す
+export async function fetchRecentHourly(stationId: string, hoursBack: number, fresh = true): Promise<ObsPoint[]> {
+  const res = await fetch(`${BASE}/latest_time.txt`, { signal: AbortSignal.timeout(10000), ...(fresh ? { cache: 'no-store' as const } : {}) })
+  if (!res.ok) throw new Error(`アメダス取得エラー ${res.status}`)
+  const latestMs = Date.parse((await res.text()).trim())
+  const files = new Set<string>()
+  for (let t = 0; t <= hoursBack; t += 3) {
+    const { ymd, hh } = jst(latestMs - t * H)
+    files.add(`${ymd}_${String(Math.floor(hh / 3) * 3).padStart(2, '0')}`)
+  }
+  const blocks = await Promise.all([...files].map((f) => getJson(`${BASE}/point/${stationId}/${f}.json`, fresh)))
+  const recs: Records = Object.assign({}, ...blocks)
+  return Object.keys(recs)
+    .filter((k) => k.endsWith('0000'))
+    .sort()
+    .map((k) => ({ ms: keyToMs(k), wind: val(recs[k], 'wind'), dir: dirDeg(recs[k]), rain1h: val(recs[k], 'precipitation1h') }))
 }
 
 export async function fetchAmedasLive(): Promise<AmedasLive[]> {
