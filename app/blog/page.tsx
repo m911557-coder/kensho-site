@@ -5,12 +5,20 @@ export const metadata = {
 
 const posts = [
   {
-    slug: 'won-konbini-sweets',
-    title: '【当選報告】ローソンのLINE懸賞でスイーツが当たりました！',
-    description: 'ローソン公式LINEのキャンペーンでコンビニスイーツが当選！応募から引換までの体験をレポートします。',
-    date: '2026年8月',
-    emoji: '🍰',
-    category: '当選報告',
+    slug: 'convenience-coupon-guide',
+    title: 'LINE懸賞の「コンビニ無料引換クーポン」とは？応募から引換までの流れと注意点',
+    description: 'ビールやお茶が当たるコンビニ無料引換クーポン懸賞の応募の流れ・引換方法・見落としやすい注意点をまとめました。',
+    date: '2026年10月',
+    emoji: '🏪',
+    category: '基礎知識',
+  },
+  {
+    slug: 'receipt-campaign-guide',
+    title: 'LINEのレシート応募キャンペーンとは？応募方法と失敗しないためのポイント',
+    description: 'レシートをLINEで送って応募する懸賞の流れと、撮影のコツ・レシートの保管など失敗しないためのポイントを解説します。',
+    date: '2026年10月',
+    emoji: '🧾',
+    category: '基礎知識',
   },
   {
     slug: 'best-time-to-apply',
