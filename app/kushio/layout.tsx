@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: '苦潮チェック',
+  title: { absolute: '苦潮チェック' },
   description: '白塚漁港〜宮川河口の苦潮発生可能性チェック',
+  robots: { index: false, follow: false },
   manifest: '/kushio-manifest.webmanifest',
   appleWebApp: {
     capable: true,
