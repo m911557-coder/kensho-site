@@ -88,7 +88,7 @@ async function main() {
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    process.env.SUPABASE_SERVICE_ROLE_KEY
   )
   // 観測値は後から変わらないので、既にある行は上書きせず無視する
   for (let i = 0; i < rows.length; i += 500) {

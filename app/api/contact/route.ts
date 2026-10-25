@@ -3,12 +3,29 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-export async function POST(req: NextRequest) {
-  const { name, email, category, rating, message } = await req.json()
+const escapeHtml = (v: unknown, max: number) =>
+  String(v ?? '')
+    .slice(0, max)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 
-  if (!message || message.trim().length < 5) {
+export async function POST(req: NextRequest) {
+  const body = await req.json()
+  const raw = typeof body.message === 'string' ? body.message : ''
+
+  if (raw.trim().length < 5) {
     return NextResponse.json({ error: 'メッセージを入力してください' }, { status: 400 })
   }
+
+  const name = escapeHtml(body.name, 100)
+  const email = escapeHtml(body.email, 200)
+  const category = escapeHtml(body.category, 50)
+  const message = escapeHtml(raw, 5000)
+  const r = Number(body.rating)
+  const rating = Number.isInteger(r) && r >= 1 && r <= 5 ? r : 0
 
   const ratingText = rating ? `⭐ 評価: ${'★'.repeat(Number(rating))}${'☆'.repeat(5 - Number(rating))} (${rating}/5)\n` : ''
 
@@ -16,7 +33,7 @@ export async function POST(req: NextRequest) {
     await resend.emails.send({
       from: 'LINE懸賞まとめ <onboarding@resend.dev>',
       to: process.env.ADMIN_EMAIL!,
-      subject: `【お問い合わせ】${category} - ${name || '匿名'}`,
+      subject: `【お問い合わせ】${String(body.category ?? '').slice(0, 50)} - ${String(body.name ?? '').slice(0, 100) || '匿名'}`,
       html: `
         <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
           <div style="background:linear-gradient(135deg,#f97316,#fb923c);padding:20px;border-radius:12px;text-align:center;margin-bottom:20px;">

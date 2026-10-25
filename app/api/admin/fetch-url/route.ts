@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { isAdminSecret } from '@/lib/admin-auth'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { url, password } = body
 
-  if (password !== process.env.NOTIFY_SECRET) {
+  if (!isAdminSecret(password)) {
     return NextResponse.json({ error: 'パスワードが違います' }, { status: 401 })
   }
 

@@ -1,17 +1,14 @@
-import { createClient } from '@supabase/supabase-js'
+import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
 import { Resend } from 'resend'
 import { NextRequest, NextResponse } from 'next/server'
+import { isAdminSecret } from '@/lib/admin-auth'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(req: NextRequest) {
   // セキュリティチェック
   const secret = req.headers.get('x-notify-secret')
-  if (secret !== process.env.NOTIFY_SECRET) {
+  if (!isAdminSecret(secret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
