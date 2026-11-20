@@ -1,6 +1,6 @@
 import { supabase, Kensho } from '@/lib/supabase'
 import KenshoList from './components/KenshoList'
-import AffiliateSection, { PointMuseumAd } from './components/AffiliateSection'
+import AffiliateSection, { AmefuriAd, PointMuseumAd, WarauAd } from './components/AffiliateSection'
 
 export const revalidate = 300
 
@@ -98,7 +98,14 @@ export default async function Home() {
       <AffiliateSection />
 
       {/* 懸賞一覧（フィルター・ソート付き） */}
-      <KenshoList items={list} inlineAd={<PointMuseumAd />} />
+      <KenshoList
+        items={list}
+        inlineAds={[
+          { after: 6, node: <PointMuseumAd /> },
+          { after: 18, node: <WarauAd /> },
+          { after: 30, node: <AmefuriAd /> },
+        ]}
+      />
 
       {/* フッター */}
       <footer className="bg-gray-800 text-gray-400 mt-16">

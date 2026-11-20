@@ -33,6 +33,47 @@ export function PointMuseumAd() {
   )
 }
 
+function SmallBannerAd({ title, href, img, pixel, alt }: { title: string; href: string; img: string; pixel: string; alt: string }) {
+  return (
+    <div className="bg-white rounded-xl border border-orange-100 px-5 py-3 flex flex-col sm:flex-row items-center gap-3 shadow-sm">
+      <div className="flex-1 flex items-center gap-2">
+        <span className="text-xs text-gray-400 shrink-0">PR</span>
+        <p className="text-sm font-bold text-gray-700">{title}</p>
+      </div>
+      <a href={href} rel="nofollow" target="_blank" className="shrink-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img width="320" height="50" src={img} alt={alt} style={{ border: 'none' }} />
+      </a>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img style={{ border: 'none' }} width="1" height="1" src={pixel} alt="" />
+    </div>
+  )
+}
+
+export function WarauAd() {
+  return (
+    <SmallBannerAd
+      title="ポイ活ならワラウ。登録無料のポイントサイト"
+      href="https://px.a8.net/svt/ejp?a8mat=4BGOWV+198YR6+3ZZC+HXSGH"
+      img="https://www26.a8.net/svt/bgt?aid=261119263076&wid=001&eno=01&mid=s00000018660003013000&mc=1"
+      pixel="https://www17.a8.net/0.gif?a8mat=4BGOWV+198YR6+3ZZC+HXSGH"
+      alt="ワラウ"
+    />
+  )
+}
+
+export function AmefuriAd() {
+  return (
+    <SmallBannerAd
+      title="スマホのすきま時間でポイ活。アメフリは登録無料"
+      href="https://px.a8.net/svt/ejp?a8mat=4BGOWU+EZEQUQ+4F8I+62MDD"
+      img="https://www26.a8.net/svt/bgt?aid=261119262906&wid=001&eno=01&mid=s00000020637001020000&mc=1"
+      pixel="https://www17.a8.net/0.gif?a8mat=4BGOWU+EZEQUQ+4F8I+62MDD"
+      alt="アメフリ"
+    />
+  )
+}
+
 export default function AffiliateSection() {
   return (
     <div className="max-w-5xl mx-auto px-6 py-4">

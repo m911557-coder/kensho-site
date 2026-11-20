@@ -31,9 +31,9 @@ function DeadlineBadge({ deadline }: { deadline: string | null }) {
   )
 }
 
-const INLINE_AD_AFTER = 6
+type InlineAd = { after: number; node: ReactNode }
 
-export default function KenshoList({ items, inlineAd }: { items: Kensho[]; inlineAd?: ReactNode }) {
+export default function KenshoList({ items, inlineAds = [] }: { items: Kensho[]; inlineAds?: InlineAd[] }) {
   const [sort, setSort] = useState('newest')
   const [category, setCategory] = useState('すべて')
   const [winnerRange, setWinnerRange] = useState(0)
@@ -256,9 +256,11 @@ export default function KenshoList({ items, inlineAd }: { items: Kensho[]; inlin
                 </a>
               </div>
             </div>
-            {inlineAd && i === Math.min(INLINE_AD_AFTER, filtered.length) - 1 && (
-              <div className="sm:col-span-2 lg:col-span-3">{inlineAd}</div>
-            )}
+            {inlineAds
+              .filter((ad) => ad.after === i + 1)
+              .map((ad) => (
+                <div key={`ad-${ad.after}`} className="sm:col-span-2 lg:col-span-3">{ad.node}</div>
+              ))}
             </Fragment>
           ))}
         </div>
