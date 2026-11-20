@@ -1,5 +1,38 @@
 'use client'
 
+export function PointMuseumAd() {
+  return (
+    <div className="bg-white rounded-xl border border-orange-100 px-5 py-4 flex flex-col sm:flex-row items-center gap-4 shadow-sm">
+      <div className="flex-1">
+        <p className="text-xs text-gray-400 mb-1">PR</p>
+        <p className="text-sm font-bold text-gray-700">
+          懸賞と一緒にポイ活も。無料で始められるポイントサイト
+        </p>
+        <p className="text-xs text-gray-500 mt-1">
+          ポイントミュージアムは登録無料。貯めたポイントは現金やギフト券に交換できます
+        </p>
+      </div>
+      <a
+        href="https://px.a8.net/svt/ejp?a8mat=4BGOWV+SKTTE+S7A+TUO9T"
+        rel="nofollow"
+        target="_blank"
+        className="shrink-0"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          width="300"
+          height="250"
+          src="https://www27.a8.net/svt/bgt?aid=261119263048&wid=001&eno=01&mid=s00000003655005014000&mc=1"
+          alt="ポイントミュージアム"
+          style={{ border: 'none' }}
+        />
+      </a>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img style={{ border: 'none' }} width="1" height="1" src="https://www17.a8.net/0.gif?a8mat=4BGOWV+SKTTE+S7A+TUO9T" alt="" />
+    </div>
+  )
+}
+
 export default function AffiliateSection() {
   return (
     <div className="max-w-5xl mx-auto px-6 py-4">
@@ -21,7 +54,7 @@ export default function AffiliateSection() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="http://hbb.afl.rakuten.co.jp/hsb/0ea7f9a4.79280dcb.0ea7f99d.1ac92fca/153145/"
+            src="https://hbb.afl.rakuten.co.jp/hsb/0ea7f9a4.79280dcb.0ea7f99d.1ac92fca/153145/"
             alt="楽天トラベル"
             style={{ border: 'none' }}
           />

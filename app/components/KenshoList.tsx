@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { Fragment, useState, useMemo, type ReactNode } from 'react'
 import { Kensho } from '@/lib/supabase'
 
 const CATEGORIES = ['すべて', '食品・飲料', 'ギフトカード', '家電・生活家電', '日用品・コスメ', 'チケット・旅行', 'その他']
@@ -31,7 +31,9 @@ function DeadlineBadge({ deadline }: { deadline: string | null }) {
   )
 }
 
-export default function KenshoList({ items }: { items: Kensho[] }) {
+const INLINE_AD_AFTER = 6
+
+export default function KenshoList({ items, inlineAd }: { items: Kensho[]; inlineAd?: ReactNode }) {
   const [sort, setSort] = useState('newest')
   const [category, setCategory] = useState('すべて')
   const [winnerRange, setWinnerRange] = useState(0)
@@ -192,9 +194,9 @@ export default function KenshoList({ items }: { items: Kensho[] }) {
         </div>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((item) => (
+          {filtered.map((item, i) => (
+            <Fragment key={item.id}>
             <div
-              key={item.id}
               className="bg-white rounded-2xl shadow-sm border border-orange-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col overflow-hidden"
             >
               <div className="h-1.5 bg-gradient-to-r from-orange-400 to-yellow-400" />
@@ -254,6 +256,10 @@ export default function KenshoList({ items }: { items: Kensho[] }) {
                 </a>
               </div>
             </div>
+            {inlineAd && i === Math.min(INLINE_AD_AFTER, filtered.length) - 1 && (
+              <div className="sm:col-span-2 lg:col-span-3">{inlineAd}</div>
+            )}
+            </Fragment>
           ))}
         </div>
       )}
